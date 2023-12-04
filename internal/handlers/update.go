@@ -29,29 +29,40 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	var metricType, metricName string
 
-	if len(uriSlice) == 0 {
+	if len(uriSlice) == 0 || uriSlice[0] == "" {
 		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
 		http.Error(w, `Metric type not specified`, http.StatusBadRequest)
 		return
 	}
 	metricType = uriSlice[0]
 
-	// При попытке передать запрос без имени метрики возвращать http.StatusNotFound.
-	if len(uriSlice) < 2 {
-		http.Error(w, `Metric name not specified`, http.StatusNotFound)
+	switch metricType {
+	case "counter", "gauge":
+		// При попытке передать запрос без имени метрики возвращать http.StatusNotFound.
+		if len(uriSlice) < 2 || uriSlice[1] == "" {
+			http.Error(w, `Metric name not specified`, http.StatusNotFound)
+			return
+		}
+		metricName = uriSlice[1]
+
+		if len(uriSlice) < 3 {
+			http.Error(w, `Incorrect metric value`, http.StatusBadRequest)
+			return
+		}
+	default:
+		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
+		http.Error(w, `Incorrect metric type`, http.StatusBadRequest)
 		return
 	}
-	metricName = uriSlice[1]
 
 	switch metricType {
 	case "counter":
 		var metricValue int64
-		if len(uriSlice) >= 3 {
-			i, err := strconv.ParseInt(uriSlice[2], 10, 64)
-			if err != nil {
-				http.Error(w, `Incorrect metric value`, http.StatusBadRequest)
-				return
-			}
+
+		if i, err := strconv.ParseInt(uriSlice[2], 10, 64); err != nil || uriSlice[2] == "" {
+			http.Error(w, `Incorrect metric value`, http.StatusBadRequest)
+			return
+		} else {
 			metricValue = i
 		}
 
@@ -62,12 +73,11 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	case "gauge":
 		var metricValue float64
-		if len(uriSlice) >= 3 {
-			i, err := strconv.ParseFloat(uriSlice[2], 64)
-			if err != nil {
-				http.Error(w, `Incorrect metric value`, http.StatusBadRequest)
-				return
-			}
+
+		if i, err := strconv.ParseFloat(uriSlice[2], 64); err != nil || uriSlice[2] == "" {
+			http.Error(w, `Incorrect metric value`, http.StatusBadRequest)
+			return
+		} else {
 			metricValue = i
 		}
 
@@ -76,10 +86,6 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-	default:
-		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
-		http.Error(w, `Incorrect metric type`, http.StatusBadRequest)
-		return
 	}
 
 	// При успешном приёме возвращать http.StatusOK.
