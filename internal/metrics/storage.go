@@ -1,5 +1,7 @@
 package metrics
 
+type metrics = map[string]Metric
+
 // MemStorage contains a set of values for all metrics
 type MemStorage struct {
 	metrics map[string]Metric
@@ -17,13 +19,13 @@ var _ Storager = (*MemStorage)(nil)
 
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
-		metrics: make(map[string]Metric),
+		metrics: make(metrics),
 	}
 }
 
 func (m *MemStorage) SetGauge(name string, value float64) error {
 	if m.metrics == nil {
-		m.metrics = map[string]Metric{}
+		m.metrics = metrics{}
 	}
 	metric, ok := m.metrics[name]
 	if !ok {
@@ -39,7 +41,7 @@ func (m *MemStorage) SetGauge(name string, value float64) error {
 
 func (m *MemStorage) AddCounter(name string, value int64) error {
 	if m.metrics == nil {
-		m.metrics = map[string]Metric{}
+		m.metrics = metrics{}
 	}
 	metric, ok := m.metrics[name]
 	if !ok {
