@@ -8,6 +8,13 @@ type Metric struct {
 	counter int64   // Новое значение должно добавляться к предыдущему
 }
 
+func NewMetric() Metric {
+	return Metric{
+		gauge:   0.0,
+		counter: 0,
+	}
+}
+
 func (m *Metric) SetGauge(value float64) error {
 	m.gauge = value
 	return nil
@@ -21,9 +28,10 @@ func (m *Metric) AddCounter(value int64) error {
 	return nil
 }
 
-func NewMetric() Metric {
-	return Metric{
-		gauge:   0.0,
-		counter: 0,
-	}
+func (m *Metric) Gauge() float64 {
+	return m.gauge
+}
+
+func (m *Metric) Counter() int64 {
+	return m.counter
 }

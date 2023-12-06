@@ -119,6 +119,14 @@ func TestMemStorage_SetGauge(t *testing.T) {
 			want:    metrics{"aaa": Metric{gauge: 1.0, counter: 2}, "bbb": Metric{gauge: 3.0, counter: 0}},
 			wantErr: false,
 		},
+		{
+			name:    "Positive case #5",
+			key:     "aaa",
+			value:   5.0,
+			metrics: nil,
+			want:    metrics{"aaa": Metric{gauge: 5, counter: 0}},
+			wantErr: false,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -168,6 +176,14 @@ func TestMemStorage_AddCounter(t *testing.T) {
 			value:   1,
 			metrics: metrics{"aaa": Metric{gauge: 1.0, counter: 2}},
 			want:    metrics{"aaa": Metric{gauge: 1.0, counter: 2}, "bbb": Metric{gauge: 0, counter: 1}},
+			wantErr: false,
+		},
+		{
+			name:    "Positive case #4",
+			key:     "aaa",
+			value:   1,
+			metrics: nil,
+			want:    metrics{"aaa": Metric{gauge: 0, counter: 1}},
 			wantErr: false,
 		},
 		{

@@ -137,6 +137,7 @@ func TestUpdateHandler(t *testing.T) {
 			UpdateHandler(w, r)
 
 			res := w.Result()
+			_ = res.Body.Close()
 
 			// проверяем код ответа
 			assert.Equal(t, tc.wantCode, res.StatusCode)

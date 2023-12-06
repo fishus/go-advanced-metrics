@@ -94,3 +94,55 @@ func TestMetric_AddCounter(t *testing.T) {
 		})
 	}
 }
+
+func TestMetric_Gauge(t *testing.T) {
+	testCases := []struct {
+		name   string
+		metric Metric
+	}{
+		{
+			name:   "Positive case #1",
+			metric: Metric{gauge: 1.23},
+		},
+		{
+			name:   "Positive case #2",
+			metric: Metric{gauge: -1.23},
+		},
+		{
+			name:   "Positive case #3",
+			metric: Metric{gauge: 0},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.metric.gauge, tc.metric.Gauge())
+		})
+	}
+}
+
+func TestMetric_Counter(t *testing.T) {
+	testCases := []struct {
+		name   string
+		metric Metric
+	}{
+		{
+			name:   "Positive case #1",
+			metric: Metric{counter: 1},
+		},
+		{
+			name:   "Positive case #1",
+			metric: Metric{counter: 0},
+		},
+		{
+			name:   "Positive case #1",
+			metric: Metric{counter: 100},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.metric.counter, tc.metric.Counter())
+		})
+	}
+}
