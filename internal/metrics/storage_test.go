@@ -8,54 +8,45 @@ import (
 
 func TestNewMemStorage(t *testing.T) {
 	want := &MemStorage{
-		metrics: metrics{},
+		gauges:   map[string]Gauge{},
+		counters: map[string]Counter{},
 	}
 	got := NewMemStorage()
 	assert.Equal(t, want, got)
 }
 
-func TestMemStorage_Metrics(t *testing.T) {
-	metrics := metrics{}
-	metrics["test"] = Metric{gauge: 1.0, counter: 10}
-
-	ms := &MemStorage{
-		metrics: metrics,
-	}
-	assert.Equal(t, metrics, ms.Metrics())
-}
-
-func TestMemStorage_Metric(t *testing.T) {
+func TestMemStorage_Gauge(t *testing.T) {
 	type want struct {
-		metric Metric
-		ok     bool
+		gauge float64
+		ok    bool
 	}
 	testCases := []struct {
-		name    string
-		metrics metrics
-		key     string
-		want    want
+		name   string
+		gauges map[string]Gauge
+		key    string
+		want   want
 	}{
 		{
-			name:    "Positive case #1",
-			metrics: metrics{"test": Metric{gauge: 1.0, counter: 10}},
-			key:     "test",
+			name:   "Positive case #1",
+			gauges: map[string]Gauge{"a": Gauge(2.1), "b": Gauge(-1.5)},
+			key:    "b",
 			want: want{
-				metric: Metric{gauge: 1.0, counter: 10},
-				ok:     true,
+				gauge: -1.5,
+				ok:    true,
 			},
 		},
 		{
-			name:    "Negative case #1",
-			metrics: metrics{},
-			key:     "test",
+			name:   "Negative case #1",
+			gauges: map[string]Gauge{},
+			key:    "a",
 			want: want{
 				ok: false,
 			},
 		},
 		{
-			name:    "Negative case #2",
-			metrics: metrics{"aaa": Metric{gauge: 1.0, counter: 10}},
-			key:     "bbb",
+			name:   "Negative case #2",
+			gauges: map[string]Gauge{"a": Gauge(2.1)},
+			key:    "b",
 			want: want{
 				ok: false,
 			},
@@ -64,18 +55,29 @@ func TestMemStorage_Metric(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ms := &MemStorage{
-				metrics: tc.metrics,
+			m := &MemStorage{
+				gauges: tc.gauges,
 			}
-			m, ok := ms.Metric(tc.key)
+			g, ok := m.Gauge(tc.key)
 			if !tc.want.ok {
 				assert.Equal(t, tc.want.ok, ok)
 				return
 			}
 			require.Equal(t, tc.want.ok, ok)
-			assert.Equal(t, tc.want.metric, m)
+			assert.Equal(t, tc.want.gauge, float64(g))
 		})
 	}
+}
+
+func TestMemStorage_Gauges(t *testing.T) {
+	gauges := map[string]Gauge{}
+	gauges["a"] = Gauge(1.0)
+	gauges["b"] = Gauge(2.1)
+
+	m := &MemStorage{
+		gauges: gauges,
+	}
+	assert.Equal(t, gauges, m.Gauges())
 }
 
 func TestMemStorage_SetGauge(t *testing.T) {
@@ -83,131 +85,196 @@ func TestMemStorage_SetGauge(t *testing.T) {
 		name    string
 		key     string
 		value   float64
-		metrics metrics
-		want    metrics
+		gauges  map[string]Gauge
+		want    map[string]Gauge
 		wantErr bool
 	}{
 		{
 			name:    "Positive case #1",
-			key:     "aaa",
+			key:     "a",
 			value:   5.0,
-			metrics: metrics{"aaa": Metric{gauge: 1.0, counter: 10}},
-			want:    metrics{"aaa": Metric{gauge: 5.0, counter: 10}},
+			gauges:  map[string]Gauge{"a": Gauge(1.0)},
+			want:    map[string]Gauge{"a": Gauge(5.0)},
 			wantErr: false,
 		},
 		{
 			name:    "Positive case #2",
-			key:     "aaa",
+			key:     "a",
 			value:   -5.0,
-			metrics: metrics{"aaa": Metric{gauge: 1.0, counter: 10}},
-			want:    metrics{"aaa": Metric{gauge: -5.0, counter: 10}},
+			gauges:  map[string]Gauge{"a": Gauge(1.0)},
+			want:    map[string]Gauge{"a": Gauge(-5.0)},
 			wantErr: false,
 		},
 		{
 			name:    "Positive case #3",
-			key:     "aaa",
+			key:     "a",
 			value:   1.0,
-			metrics: metrics{},
-			want:    metrics{"aaa": Metric{gauge: 1.0, counter: 0}},
+			gauges:  map[string]Gauge{},
+			want:    map[string]Gauge{"a": Gauge(1.0)},
 			wantErr: false,
 		},
 		{
 			name:    "Positive case #3",
-			key:     "bbb",
+			key:     "b",
 			value:   3.0,
-			metrics: metrics{"aaa": Metric{gauge: 1.0, counter: 2}},
-			want:    metrics{"aaa": Metric{gauge: 1.0, counter: 2}, "bbb": Metric{gauge: 3.0, counter: 0}},
+			gauges:  map[string]Gauge{"a": Gauge(1.0)},
+			want:    map[string]Gauge{"a": Gauge(1.0), "b": Gauge(3.0)},
 			wantErr: false,
 		},
 		{
 			name:    "Positive case #5",
-			key:     "aaa",
+			key:     "a",
 			value:   5.0,
-			metrics: nil,
-			want:    metrics{"aaa": Metric{gauge: 5, counter: 0}},
+			gauges:  nil,
+			want:    map[string]Gauge{"a": Gauge(5)},
 			wantErr: false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ms := &MemStorage{
-				metrics: tc.metrics,
+			m := &MemStorage{
+				gauges: tc.gauges,
 			}
-			err := ms.SetGauge(tc.key, tc.value)
+			err := m.SetGauge(tc.key, tc.value)
 			if tc.wantErr {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.want, ms.metrics)
+			assert.Equal(t, tc.want, m.gauges)
 		})
 	}
 }
 
-func TestMemStorage_AddCounter(t *testing.T) {
+func TestMemStorage_Counter(t *testing.T) {
+	type want struct {
+		counter int64
+		ok      bool
+	}
 	testCases := []struct {
-		name    string
-		key     string
-		value   int64
-		metrics metrics
-		want    metrics
-		wantErr bool
+		name     string
+		counters map[string]Counter
+		key      string
+		want     want
 	}{
 		{
-			name:    "Positive case #1",
-			key:     "aaa",
-			value:   1,
-			metrics: metrics{"aaa": Metric{gauge: 1.0, counter: 2}},
-			want:    metrics{"aaa": Metric{gauge: 1.0, counter: 3}},
-			wantErr: false,
+			name:     "Positive case #1",
+			counters: map[string]Counter{"a": Counter(10), "b": Counter(20)},
+			key:      "b",
+			want: want{
+				counter: 20,
+				ok:      true,
+			},
 		},
 		{
-			name:    "Positive case #2",
-			key:     "aaa",
-			value:   1,
-			metrics: metrics{},
-			want:    metrics{"aaa": Metric{gauge: 0, counter: 1}},
-			wantErr: false,
+			name:     "Negative case #1",
+			counters: map[string]Counter{},
+			key:      "a",
+			want: want{
+				ok: false,
+			},
 		},
 		{
-			name:    "Positive case #3",
-			key:     "bbb",
-			value:   1,
-			metrics: metrics{"aaa": Metric{gauge: 1.0, counter: 2}},
-			want:    metrics{"aaa": Metric{gauge: 1.0, counter: 2}, "bbb": Metric{gauge: 0, counter: 1}},
-			wantErr: false,
-		},
-		{
-			name:    "Positive case #4",
-			key:     "aaa",
-			value:   1,
-			metrics: nil,
-			want:    metrics{"aaa": Metric{gauge: 0, counter: 1}},
-			wantErr: false,
-		},
-		{
-			name:    "Negative case #1",
-			key:     "aaa",
-			value:   -1,
-			metrics: metrics{"aaa": Metric{gauge: 1.0, counter: 2}},
-			want:    metrics{"aaa": Metric{gauge: 1.0, counter: 2}},
-			wantErr: true,
+			name:     "Negative case #2",
+			counters: map[string]Counter{"a": Counter(10)},
+			key:      "b",
+			want: want{
+				ok: false,
+			},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ms := &MemStorage{
-				metrics: tc.metrics,
+			m := &MemStorage{
+				counters: tc.counters,
 			}
-			err := ms.AddCounter(tc.key, tc.value)
+			c, ok := m.Counter(tc.key)
+			if !tc.want.ok {
+				assert.Equal(t, tc.want.ok, ok)
+				return
+			}
+			require.Equal(t, tc.want.ok, ok)
+			assert.Equal(t, tc.want.counter, int64(c))
+		})
+	}
+}
+
+func TestMemStorage_Counters(t *testing.T) {
+	counters := map[string]Counter{}
+	counters["a"] = Counter(1)
+	counters["b"] = Counter(100)
+
+	m := &MemStorage{
+		counters: counters,
+	}
+	assert.Equal(t, counters, m.Counters())
+}
+
+func TestMemStorage_AddCounter(t *testing.T) {
+	testCases := []struct {
+		name     string
+		key      string
+		value    int64
+		counters map[string]Counter
+		want     map[string]Counter
+		wantErr  bool
+	}{
+		{
+			name:     "Positive case #1",
+			key:      "a",
+			value:    1,
+			counters: map[string]Counter{"a": Counter(2)},
+			want:     map[string]Counter{"a": Counter(3)},
+			wantErr:  false,
+		},
+		{
+			name:     "Positive case #2",
+			key:      "a",
+			value:    1,
+			counters: map[string]Counter{},
+			want:     map[string]Counter{"a": Counter(1)},
+			wantErr:  false,
+		},
+		{
+			name:     "Positive case #3",
+			key:      "b",
+			value:    1,
+			counters: map[string]Counter{"a": Counter(2)},
+			want:     map[string]Counter{"a": Counter(2), "b": Counter(1)},
+			wantErr:  false,
+		},
+		{
+			name:     "Positive case #4",
+			key:      "a",
+			value:    1,
+			counters: nil,
+			want:     map[string]Counter{"a": Counter(1)},
+			wantErr:  false,
+		},
+		{
+			name:     "Negative case #1",
+			key:      "a",
+			value:    -1,
+			counters: map[string]Counter{"a": Counter(2)},
+			want:     map[string]Counter{"a": Counter(2)},
+			wantErr:  true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := &MemStorage{
+				counters: tc.counters,
+			}
+			err := m.AddCounter(tc.key, tc.value)
 			if tc.wantErr {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.want, ms.metrics)
+			assert.Equal(t, tc.want, m.counters)
 		})
 	}
 }

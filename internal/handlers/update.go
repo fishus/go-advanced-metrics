@@ -8,9 +8,10 @@ import (
 	"strings"
 )
 
-var ms metrics.Storager = metrics.NewMemStorage()
+var storage metrics.Repositories = metrics.NewMemStorage()
 
-// Обработка данных в формате /update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
+// UpdateHandler processes a request like /update/<ТИП_МЕТРИКИ>/<ИМЯ_МЕТРИКИ>/<ЗНАЧЕНИЕ_МЕТРИКИ>
+// Stores metric data by type and name
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, fmt.Sprintf(`%s method not allowed`, r.Method), http.StatusMethodNotAllowed)
@@ -36,8 +37,8 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	metricType = uriSlice[0]
 
-	switch metricType {
-	case "counter", "gauge":
+	switch metrics.MetricType(metricType) {
+	case metrics.TypeCounter, metrics.TypeGauge:
 		// При попытке передать запрос без имени метрики возвращать http.StatusNotFound.
 		if len(uriSlice) < 2 || uriSlice[1] == "" {
 			http.Error(w, `Metric name not specified`, http.StatusNotFound)
@@ -55,8 +56,8 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch metricType {
-	case "counter":
+	switch metrics.MetricType(metricType) {
+	case metrics.TypeCounter:
 		var metricValue int64
 
 		if i, err := strconv.ParseInt(uriSlice[2], 10, 64); err != nil || uriSlice[2] == "" {
@@ -66,12 +67,12 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 			metricValue = i
 		}
 
-		err := ms.AddCounter(metricName, metricValue)
+		err := storage.AddCounter(metricName, metricValue)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-	case "gauge":
+	case metrics.TypeGauge:
 		var metricValue float64
 
 		if i, err := strconv.ParseFloat(uriSlice[2], 64); err != nil || uriSlice[2] == "" {
@@ -81,7 +82,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 			metricValue = i
 		}
 
-		err := ms.SetGauge(metricName, metricValue)
+		err := storage.SetGauge(metricName, metricValue)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
