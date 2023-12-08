@@ -5,12 +5,10 @@ import (
 	"net/http"
 )
 
+const serverHost = "localhost:8080"
+
 func main() {
-	mux := http.NewServeMux()
-
-	mux.HandleFunc(`/update/`, handlers.UpdateHandler)
-
-	err := http.ListenAndServe(`localhost:8080`, mux)
+	err := http.ListenAndServe(serverHost, handlers.ServerRouter())
 	if err != nil {
 		panic(err)
 	}
