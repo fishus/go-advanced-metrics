@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/fishus/go-advanced-metrics/internal/collector"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
-	"net/http"
+	"github.com/go-resty/resty/v2"
 	"runtime"
 	"strconv"
 	"time"
@@ -18,7 +18,7 @@ func main() {
 
 	ms := &runtime.MemStats{}
 
-	client := &http.Client{}
+	client := resty.New()
 
 	// Обновлять метрики с заданной частотой: pollInterval — 2 секунды.
 	pollInterval := 2
@@ -44,11 +44,11 @@ func main() {
 		}
 
 		for name, g := range data.Gauges() {
-			_ = postUpdateMetrics(client, string(metrics.TypeGauge), name, strconv.FormatFloat(float64(g), 'f', -1, 64))
+			_ = postUpdateMetrics(client, metrics.TypeGauge, name, strconv.FormatFloat(float64(g), 'f', -1, 64))
 		}
 
 		for name, c := range data.Counters() {
-			_ = postUpdateMetrics(client, string(metrics.TypeCounter), name, strconv.FormatInt(int64(c), 10))
+			_ = postUpdateMetrics(client, metrics.TypeCounter, name, strconv.FormatInt(int64(c), 10))
 		}
 
 		// Reset counters and data
@@ -59,13 +59,19 @@ func main() {
 	}
 }
 
-func postUpdateMetrics(client *http.Client, mtype, name, value string) error {
-	requestURL := fmt.Sprintf("http://%s/update/%s/%s/%s", serverHost, mtype, name, value)
+func postUpdateMetrics(client *resty.Client, mtype, name, value string) error {
+	_, err := client.R().
+		SetPathParams(map[string]string{
+			"metricType":  mtype,
+			"metricName":  name,
+			"metricValue": value,
+		}).
+		SetHeader("Content-Type", "text/plain; charset=utf-8").
+		Post(fmt.Sprintf("http://%s/update/{metricType}/{metricName}/{metricValue}", serverHost))
 
-	resp, err := client.Post(requestURL, "text/plain; charset=utf-8", nil)
 	if err != nil {
-		return err
+		panic(err)
 	}
-	_ = resp.Body.Close()
+
 	return nil
 }
