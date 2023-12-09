@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 	"github.com/go-chi/chi/v5"
+	"io"
 	"net/http"
 	"strconv"
 )
 
-// UpdateHandler processes a request like POST /update/{metricType}/{metricName}/{metricValue}
-// Stores metric data by type and name
-func UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+func ValueHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
 		http.Error(w, fmt.Sprintf(`%s method not allowed`, r.Method), http.StatusMethodNotAllowed)
 		return
 	}
@@ -35,45 +34,38 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch metricType {
 	case metrics.TypeCounter:
-		var metricValue int64
-
-		v := chi.URLParam(r, "metricValue")
-
-		if i, err := strconv.ParseInt(v, 10, 64); err != nil || v == "" {
-			http.Error(w, `Incorrect metric value`, http.StatusBadRequest)
+		metricValue, ok := storage.Counter(metricName)
+		if !ok {
+			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
+			http.Error(w, fmt.Sprintf(`Counter '%s' not found`, metricName), http.StatusNotFound)
 			return
-		} else {
-			metricValue = i
 		}
 
-		err := storage.AddCounter(metricName, metricValue)
+		w.WriteHeader(http.StatusOK)
+
+		_, err := io.WriteString(w, strconv.FormatInt(int64(metricValue), 10))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
+			panic(err)
 		}
+
 	case metrics.TypeGauge:
-		var metricValue float64
-
-		v := chi.URLParam(r, "metricValue")
-
-		if i, err := strconv.ParseFloat(v, 64); err != nil || v == "" {
-			http.Error(w, `Incorrect metric value`, http.StatusBadRequest)
+		metricValue, ok := storage.Gauge(metricName)
+		if !ok {
+			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
+			http.Error(w, fmt.Sprintf(`Gauge '%s' not found`, metricName), http.StatusNotFound)
 			return
-		} else {
-			metricValue = i
 		}
 
-		err := storage.SetGauge(metricName, metricValue)
+		w.WriteHeader(http.StatusOK)
+
+		_, err := io.WriteString(w, strconv.FormatFloat(float64(metricValue), 'f', -1, 64))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
+			panic(err)
 		}
+
 	default:
 		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
 		http.Error(w, `Incorrect metric type`, http.StatusBadRequest)
 		return
 	}
-
-	// При успешном приёме возвращать http.StatusOK.
-	w.WriteHeader(http.StatusOK)
 }
