@@ -13,5 +13,6 @@ func ServerRouter() chi.Router {
 
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", UpdateHandler)
 	r.Get("/value/{metricType}/{metricName}", ValueHandler)
+	r.Get("/", ListHandler)
 	return r
 }

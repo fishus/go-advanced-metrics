@@ -1,0 +1,21 @@
+{{ if .Counters | len -}}
+<h3>Counters:</h3>
+<ul data-id="counters">
+{{ range $name, $value := .Counters -}}
+    <li><strong>{{ $name }}</strong>: <span>{{ $value }}</span></li>
+{{ end -}}
+</ul>
+{{ else -}}
+<p data-id="no-counters">No counters</p>
+{{ end -}}
+
+{{ if .Gauges | len -}}
+<h3>Gauges:</h3>
+<ul data-id="gauges">
+{{ range $name, $value := .Gauges -}}
+    <li><strong>{{ $name }}</strong>: <span>{{ $value }}</span></li>
+{{ end -}}
+</ul>
+{{ else -}}
+<p data-id="no-gauges">No gauges</p>
+{{ end -}}
