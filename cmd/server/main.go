@@ -1,14 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"github.com/fishus/go-advanced-metrics/internal/handlers"
 	"net/http"
 )
 
-const serverHost = "localhost:8080"
-
 func main() {
-	err := http.ListenAndServe(serverHost, handlers.ServerRouter())
+	parseFlags()
+	fmt.Println("Running server on", serverAddr)
+	err := http.ListenAndServe(serverAddr, handlers.ServerRouter())
 	if err != nil {
 		panic(err)
 	}

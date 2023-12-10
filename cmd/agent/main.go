@@ -10,9 +10,9 @@ import (
 	"time"
 )
 
-const serverHost = "localhost:8080"
-
 func main() {
+	parseFlags()
+
 	// data contains a set of values for all metrics
 	data := metrics.NewMemStorage()
 
@@ -20,40 +20,35 @@ func main() {
 
 	client := resty.New()
 
-	// Обновлять метрики с заданной частотой: pollInterval — 2 секунды.
-	pollInterval := 2
+	now := time.Now()
 
-	// Отправлять метрики на сервер с заданной частотой: reportInterval — 10 секунд.
-	reportInterval := 10
-
-	i := 0
+	pollAfter := now.Add(options.pollInterval)
+	reportAfter := now.Add(options.reportInterval)
 
 	for {
-		i++
+		now = time.Now()
 
-		if i%pollInterval != 0 {
-			time.Sleep(1 * time.Second)
-			continue
+		// Collect metrics every {options.pollInterval} seconds
+		if now.After(pollAfter) {
+			pollAfter = now.Add(options.pollInterval)
+			collector.CollectMemStats(ms, data)
 		}
 
-		collector.CollectMemStats(ms, data)
+		// Send metrics to the server every {options.reportInterval} seconds
+		if now.After(reportAfter) {
+			reportAfter = now.Add(options.reportInterval)
 
-		if i%reportInterval != 0 {
-			time.Sleep(1 * time.Second)
-			continue
+			for name, g := range data.Gauges() {
+				_ = postUpdateMetrics(client, metrics.TypeGauge, name, strconv.FormatFloat(float64(g), 'f', -1, 64))
+			}
+
+			for name, c := range data.Counters() {
+				_ = postUpdateMetrics(client, metrics.TypeCounter, name, strconv.FormatInt(int64(c), 10))
+			}
+
+			// Reset metrics
+			data = metrics.NewMemStorage()
 		}
-
-		for name, g := range data.Gauges() {
-			_ = postUpdateMetrics(client, metrics.TypeGauge, name, strconv.FormatFloat(float64(g), 'f', -1, 64))
-		}
-
-		for name, c := range data.Counters() {
-			_ = postUpdateMetrics(client, metrics.TypeCounter, name, strconv.FormatInt(int64(c), 10))
-		}
-
-		// Reset counters and data
-		i = 0
-		data = metrics.NewMemStorage()
 
 		time.Sleep(1 * time.Second)
 	}
@@ -67,7 +62,7 @@ func postUpdateMetrics(client *resty.Client, mtype, name, value string) error {
 			"metricValue": value,
 		}).
 		SetHeader("Content-Type", "text/plain; charset=utf-8").
-		Post(fmt.Sprintf("http://%s/update/{metricType}/{metricName}/{metricValue}", serverHost))
+		Post(fmt.Sprintf("http://%s/update/{metricType}/{metricName}/{metricValue}", serverAddr))
 
 	if err != nil {
 		panic(err)
