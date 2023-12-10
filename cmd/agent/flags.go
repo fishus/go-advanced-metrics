@@ -10,8 +10,8 @@ import (
 var serverAddr string
 
 var options struct {
-	pollInterval   time.Duration // Обновлять метрики с заданной частотой
-	reportInterval time.Duration // Отправлять метрики на сервер с заданной частотой
+	pollInterval   time.Duration // Обновлять метрики с заданной частотой (в секундах)
+	reportInterval time.Duration // Отправлять метрики на сервер с заданной частотой (в секундах)
 }
 
 func parseFlags() {
@@ -21,10 +21,13 @@ func parseFlags() {
 	flag.StringVar(&serverAddr, "a", "localhost:8080", "server address and port")
 
 	// Флаг -p=<ЗНАЧЕНИЕ> позволяет переопределять pollInterval — частоту опроса метрик из пакета runtime (по умолчанию 2 секунды).
-	flag.DurationVar(&options.pollInterval, "p", (2 * time.Second), "frequency of polling metrics from the runtime package (in time.Second)")
+	p := flag.Int64("p", 2, "frequency of polling metrics from the runtime package (in seconds)")
 
 	// Флаг -r=<ЗНАЧЕНИЕ> позволяет переопределять reportInterval — частоту отправки метрик на сервер (по умолчанию 10 секунд).
-	flag.DurationVar(&options.reportInterval, "r", (10 * time.Second), "frequency of sending metrics to the server (in time.Second)")
+	r := flag.Int64("r", 10, "frequency of sending metrics to the server (in seconds)")
 
 	flag.Parse()
+
+	options.pollInterval = time.Duration(*p) * time.Second
+	options.reportInterval = time.Duration(*r) * time.Second
 }
