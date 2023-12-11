@@ -10,6 +10,8 @@ require github.com/go-resty/resty/v2 v2.10.0
 
 require github.com/PuerkitoBio/goquery v1.8.1
 
+require github.com/caarlos0/env/v10 v10.0.0
+
 require (
 	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

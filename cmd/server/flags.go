@@ -14,4 +14,8 @@ func parseFlags() {
 	// Флаг -a=<ЗНАЧЕНИЕ> отвечает за адрес эндпоинта HTTP-сервера (по умолчанию localhost:8080).
 	flag.StringVar(&serverAddr, "a", "localhost:8080", "address and port to run the server")
 	flag.Parse()
+
+	if envAddress, exists := os.LookupEnv("ADDRESS"); exists {
+		serverAddr = envAddress
+	}
 }

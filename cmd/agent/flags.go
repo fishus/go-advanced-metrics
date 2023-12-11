@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/caarlos0/env/v10"
 	"os"
 	"time"
 )
@@ -21,13 +22,35 @@ func parseFlags() {
 	flag.StringVar(&serverAddr, "a", "localhost:8080", "server address and port")
 
 	// Флаг -p=<ЗНАЧЕНИЕ> позволяет переопределять pollInterval — частоту опроса метрик из пакета runtime (по умолчанию 2 секунды).
-	p := flag.Int64("p", 2, "frequency of polling metrics from the runtime package (in seconds)")
+	p := flag.Uint("p", 2, "frequency of polling metrics from the runtime package (in seconds)")
 
 	// Флаг -r=<ЗНАЧЕНИЕ> позволяет переопределять reportInterval — частоту отправки метрик на сервер (по умолчанию 10 секунд).
-	r := flag.Int64("r", 10, "frequency of sending metrics to the server (in seconds)")
+	r := flag.Uint("r", 10, "frequency of sending metrics to the server (in seconds)")
 
 	flag.Parse()
 
 	options.pollInterval = time.Duration(*p) * time.Second
 	options.reportInterval = time.Duration(*r) * time.Second
+
+	var cfg struct {
+		ServerAddr     string `env:"ADDRESS"`
+		PollInterval   uint   `env:"POLL_INTERVAL"`
+		ReportInterval uint   `env:"REPORT_INTERVAL"`
+	}
+	err := env.Parse(&cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	if cfg.ServerAddr != "" {
+		serverAddr = cfg.ServerAddr
+	}
+
+	if cfg.PollInterval != 0 {
+		options.pollInterval = time.Duration(cfg.PollInterval) * time.Second
+	}
+
+	if cfg.ReportInterval != 0 {
+		options.reportInterval = time.Duration(cfg.ReportInterval) * time.Second
+	}
 }
