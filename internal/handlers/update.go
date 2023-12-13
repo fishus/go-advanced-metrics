@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/fishus/go-advanced-metrics/internal/metrics"
-	"github.com/go-chi/chi/v5"
 	"net/http"
 	"strconv"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
 // UpdateHandler processes a request like POST /update/{metricType}/{metricName}/{metricValue}

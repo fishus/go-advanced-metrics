@@ -1,12 +1,14 @@
 package handlers
 
 import (
-	"github.com/fishus/go-advanced-metrics/internal/metrics"
-	"github.com/go-resty/resty/v2"
-	"github.com/stretchr/testify/suite"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-resty/resty/v2"
+	"github.com/stretchr/testify/suite"
+
+	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
 type ValueHandlerSuite struct {

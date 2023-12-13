@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/fishus/go-advanced-metrics/internal/handlers"
 	"log"
 	"net/http"
+
+	"github.com/fishus/go-advanced-metrics/internal/handlers"
 )
 
 func main() {

@@ -2,9 +2,10 @@ package main
 
 import (
 	"flag"
-	"github.com/caarlos0/env/v10"
 	"os"
 	"time"
+
+	"github.com/caarlos0/env/v10"
 )
 
 // serverAddr store address and port to send requests to a server

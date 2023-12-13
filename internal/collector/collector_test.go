@@ -1,9 +1,11 @@
 package collector
 
 import (
-	"github.com/fishus/go-advanced-metrics/internal/metrics"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
 func TestSetMetricGauge(t *testing.T) {

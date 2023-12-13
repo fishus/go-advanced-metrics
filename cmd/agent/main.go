@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/fishus/go-advanced-metrics/internal/collector"
-	"github.com/fishus/go-advanced-metrics/internal/metrics"
-	"github.com/go-resty/resty/v2"
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/go-resty/resty/v2"
+
+	"github.com/fishus/go-advanced-metrics/internal/collector"
+	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
 func main() {

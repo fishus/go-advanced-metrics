@@ -2,9 +2,10 @@ package collector
 
 import (
 	"errors"
-	"github.com/fishus/go-advanced-metrics/internal/metrics"
 	"math/rand"
 	"runtime"
+
+	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
 func CollectMemStats(ms *runtime.MemStats, data *metrics.MemStorage) {

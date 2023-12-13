@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/fishus/go-advanced-metrics/internal/metrics"
-	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 	"strconv"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
 func ValueHandler(w http.ResponseWriter, r *http.Request) {

@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"github.com/fishus/go-advanced-metrics/internal/metrics"
 	"html/template"
 	"net/http"
+
+	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
 func ListHandler(w http.ResponseWriter, r *http.Request) {
