@@ -12,7 +12,10 @@ import (
 
 func main() {
 	parseFlags()
+	collectAndSendMetrics()
+}
 
+func collectAndSendMetrics() {
 	// data contains a set of values for all metrics
 	data := metrics.NewMemStorage()
 
