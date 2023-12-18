@@ -12,8 +12,10 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
+var config Config
+
 func main() {
-	parseFlags()
+	config = loadConfig()
 	collectAndSendMetrics()
 }
 
@@ -27,21 +29,21 @@ func collectAndSendMetrics() {
 
 	now := time.Now()
 
-	pollAfter := now.Add(options.pollInterval)
-	reportAfter := now.Add(options.reportInterval)
+	pollAfter := now.Add(config.pollInterval)
+	reportAfter := now.Add(config.reportInterval)
 
 	for {
 		now = time.Now()
 
 		// Collect metrics every {options.pollInterval} seconds
 		if now.After(pollAfter) {
-			pollAfter = now.Add(options.pollInterval)
+			pollAfter = now.Add(config.pollInterval)
 			collector.CollectMemStats(ms, data)
 		}
 
 		// Send metrics to the server every {options.reportInterval} seconds
 		if now.After(reportAfter) {
-			reportAfter = now.Add(options.reportInterval)
+			reportAfter = now.Add(config.reportInterval)
 
 			for name, g := range data.Gauges() {
 				_ = postUpdateMetrics(client, metrics.TypeGauge, name, strconv.FormatFloat(float64(g), 'f', -1, 64))
@@ -67,7 +69,7 @@ func postUpdateMetrics(client *resty.Client, mtype, name, value string) error {
 			"metricValue": value,
 		}).
 		SetHeader("Content-Type", "text/plain; charset=utf-8").
-		Post(fmt.Sprintf("http://%s/update/{metricType}/{metricName}/{metricValue}", serverAddr))
+		Post(fmt.Sprintf("http://%s/update/{metricType}/{metricName}/{metricValue}", config.serverAddr))
 
 	if err != nil {
 		panic(err)
