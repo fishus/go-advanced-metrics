@@ -7,14 +7,16 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/handlers"
 )
 
+var config Config
+
 func main() {
-	parseFlags()
+	config = loadConfig()
 	runServer()
 }
 
 func runServer() {
-	log.Println("Running server on", serverAddr)
-	err := http.ListenAndServe(serverAddr, handlers.ServerRouter())
+	log.Println("Running server on", config.serverAddr)
+	err := http.ListenAndServe(config.serverAddr, handlers.ServerRouter())
 	if err != nil {
 		panic(err)
 	}
