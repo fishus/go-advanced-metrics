@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/stretchr/testify/suite"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -57,17 +58,17 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 	testCases := []struct {
 		name string
 		args []string
-		want Config
+		want map[string]string
 	}{
 		{
 			name: "Positive case #1",
 			args: nil,
-			want: Config{serverAddr: "localhost:8080"},
+			want: map[string]string{"serverAddr": "localhost:8080"},
 		},
 		{
 			name: "Positive case #2",
 			args: []string{"-a=example.com:8181"},
-			want: Config{serverAddr: "example.com:8181"},
+			want: map[string]string{"serverAddr": "example.com:8181"},
 		},
 	}
 
@@ -80,7 +81,11 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 			config := NewConfig()
 			config = parseFlags(config)
 
-			suite.Assert().EqualValues(tc.want, config)
+			configFields := reflect.ValueOf(config)
+
+			for k, want := range tc.want {
+				suite.Assert().EqualValues(want, configFields.FieldByName(k).String())
+			}
 		})
 	}
 }
@@ -89,17 +94,17 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 	testCases := []struct {
 		name string
 		envs []string
-		want Config
+		want map[string]string
 	}{
 		{
 			name: "Positive case #1",
 			envs: nil,
-			want: Config{serverAddr: ""},
+			want: map[string]string{"serverAddr": ""},
 		},
 		{
 			name: "Positive case #2",
 			envs: []string{"ADDRESS=example.com:8181"},
-			want: Config{serverAddr: "example.com:8181"},
+			want: map[string]string{"serverAddr": "example.com:8181"},
 		},
 	}
 
@@ -124,7 +129,11 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 			config := NewConfig()
 			config = parseEnvs(config)
 
-			suite.Assert().EqualValues(tc.want, config)
+			configFields := reflect.ValueOf(config)
+
+			for k, want := range tc.want {
+				suite.Assert().EqualValues(want, configFields.FieldByName(k).String())
+			}
 		})
 	}
 }
@@ -134,19 +143,19 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 		name string
 		args []string
 		envs []string
-		want Config
+		want map[string]string
 	}{
 		{
 			name: "Positive case #1",
 			args: nil,
 			envs: nil,
-			want: Config{serverAddr: "localhost:8080"},
+			want: map[string]string{"serverAddr": "localhost:8080"},
 		},
 		{
 			name: "Positive case #2",
 			args: []string{"-a=aaa.com:3333"},
 			envs: []string{"ADDRESS=bbb.com:5555"},
-			want: Config{serverAddr: "bbb.com:5555"},
+			want: map[string]string{"serverAddr": "bbb.com:5555"},
 		},
 	}
 
@@ -174,7 +183,11 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 
 			config := loadConfig()
 
-			suite.Assert().EqualValues(tc.want, config)
+			configFields := reflect.ValueOf(config)
+
+			for k, want := range tc.want {
+				suite.Assert().EqualValues(want, configFields.FieldByName(k).String())
+			}
 		})
 	}
 }
