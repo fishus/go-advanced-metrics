@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"runtime"
-	"strconv"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -52,12 +50,12 @@ func collectAndSendMetrics() {
 		if now.After(reportAfter) {
 			reportAfter = now.Add(config.reportInterval)
 
-			for name, g := range data.Gauges() {
-				_ = postUpdateMetrics(client, metrics.TypeGauge, name, strconv.FormatFloat(float64(g), 'f', -1, 64))
+			for name, c := range data.Counters() {
+				_ = postUpdateMetrics(client, metrics.TypeCounter, name, int64(c), 0)
 			}
 
-			for name, c := range data.Counters() {
-				_ = postUpdateMetrics(client, metrics.TypeCounter, name, strconv.FormatInt(int64(c), 10))
+			for name, g := range data.Gauges() {
+				_ = postUpdateMetrics(client, metrics.TypeGauge, name, 0, float64(g))
 			}
 
 			// Reset metrics
@@ -68,21 +66,39 @@ func collectAndSendMetrics() {
 	}
 }
 
-func postUpdateMetrics(client *resty.Client, mtype, name, value string) error {
-	logger.Log.Debug(`Sent POST /update/ request`, zap.String("event", "request sent"), zap.String("addr", config.serverAddr), zap.String("name", name), zap.String("type", mtype), zap.String("value", value))
+func postUpdateMetrics(client *resty.Client, mtype, name string, delta int64, value float64) error {
+	type Metrics struct {
+		ID    string   `json:"id"`              // имя метрики
+		MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
+		Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
+		Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+	}
+
+	var metric Metrics
+
+	metric.ID = name
+	metric.MType = mtype
+
+	switch mtype {
+	case metrics.TypeCounter:
+		metric.Delta = new(int64)
+		*metric.Delta = delta
+	case metrics.TypeGauge:
+		metric.Value = new(float64)
+		*metric.Value = value
+	}
+
+	logger.Log.Debug(`Sent POST /update/ request`, zap.String("event", "request sent"), zap.String("addr", config.serverAddr), zap.Any("metric", metric))
 
 	resp, err := client.R().
-		SetPathParams(map[string]string{
-			"metricType":  mtype,
-			"metricName":  name,
-			"metricValue": value,
-		}).
-		SetHeader("Content-Type", "text/plain; charset=utf-8").
-		Post(fmt.Sprintf("http://%s/update/{metricType}/{metricName}/{metricValue}", config.serverAddr))
+		SetHeader("Content-Type", "application/json; charset=utf-8").
+		SetBody(metric).
+		Post("http://" + config.serverAddr + "/update/")
 
 	if err != nil {
 		logger.Log.Error(err.Error(),
-			zap.String("url", "http://"+config.serverAddr+"/update/"))
+			zap.String("url", "http://"+config.serverAddr+"/update/"),
+			zap.Any("data", metric))
 	}
 
 	logger.Log.Debug(`Received response from the server`, zap.String("event", "response received"), zap.Any("headers", resp.Header()), zap.Any("body", resp.Body()))
