@@ -11,12 +11,8 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
-func ValueHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, fmt.Sprintf(`%s method not allowed`, r.Method), http.StatusMethodNotAllowed)
-		return
-	}
-
+// ValueMetricHandler returns metrics data
+func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 	var metricType, metricName string
 
 	metricType = chi.URLParam(r, "metricType")
