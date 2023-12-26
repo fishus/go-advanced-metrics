@@ -15,7 +15,8 @@ func ServerRouter() chi.Router {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RequestLogger(&logger.LogFormatter{}))
 
-	r.Post("/update/{metricType}/{metricName}/{metricValue}", UpdateHandler)
+	r.Post("/update/", UpdateMetricsHandler)
+	r.Post("/update/{metricType}/{metricName}/{metricValue}", UpdateMetricHandler)
 	r.Get("/value/{metricType}/{metricName}", ValueHandler)
 	r.Get("/", ListHandler)
 	return r

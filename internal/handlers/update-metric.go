@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -10,14 +9,9 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
-// UpdateHandler processes a request like POST /update/{metricType}/{metricName}/{metricValue}
+// UpdateMetricHandler processes a request like POST /update/{metricType}/{metricName}/{metricValue}
 // Stores metric data by type and name
-func UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, fmt.Sprintf(`%s method not allowed`, r.Method), http.StatusMethodNotAllowed)
-		return
-	}
-
+func UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	var metricType, metricName string
 
 	metricType = chi.URLParam(r, "metricType")
