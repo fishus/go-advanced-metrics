@@ -19,7 +19,7 @@ type UpdateMetricsHandlerSuite struct {
 
 func (s *UpdateMetricsHandlerSuite) SetupSuite() {
 	s.ts = httptest.NewServer(ServerRouter())
-	s.client = resty.New()
+	s.client = resty.New().SetBaseURL(s.ts.URL)
 }
 
 func (s *UpdateMetricsHandlerSuite) TearDownSuite() {
@@ -32,11 +32,11 @@ func (s *UpdateMetricsHandlerSuite) SetupSubTest() {
 	_ = storage.SetGauge("a", 11.15)
 }
 
-func (s *UpdateMetricsHandlerSuite) requestUpdate(url string, data []byte) *resty.Response {
+func (s *UpdateMetricsHandlerSuite) requestUpdate(data []byte) *resty.Response {
 	resp, err := s.client.R().
 		SetHeader("Content-Type", "application/json; charset=utf-8").
 		SetBody(data).
-		Post(url + "/update/")
+		Post("update/")
 	s.Require().NoError(err)
 
 	return resp
@@ -143,7 +143,7 @@ func (s *UpdateMetricsHandlerSuite) TestUpdateMetricsHandler() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			resp := s.requestUpdate(s.ts.URL, []byte(tc.input))
+			resp := s.requestUpdate([]byte(tc.input))
 			s.Equal(tc.status, resp.StatusCode())
 
 			if resp.StatusCode() == http.StatusOK {

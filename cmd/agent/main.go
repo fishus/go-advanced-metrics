@@ -29,7 +29,7 @@ func collectAndSendMetrics() {
 
 	ms := &runtime.MemStats{}
 
-	client := resty.New()
+	client := resty.New().SetBaseURL("http://" + config.serverAddr)
 	logger.Log.Info("Running agent", zap.String("address", config.serverAddr), zap.String("event", "start agent"))
 
 	now := time.Now()
@@ -93,7 +93,7 @@ func postUpdateMetrics(client *resty.Client, mtype, name string, delta int64, va
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json; charset=utf-8").
 		SetBody(metric).
-		Post("http://" + config.serverAddr + "/update/")
+		Post("update/")
 
 	if err != nil {
 		logger.Log.Error(err.Error(),

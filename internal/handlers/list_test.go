@@ -21,7 +21,7 @@ type ListHandlerSuite struct {
 
 func (s *ListHandlerSuite) SetupSuite() {
 	s.ts = httptest.NewServer(ServerRouter())
-	s.client = resty.New()
+	s.client = resty.New().SetBaseURL(s.ts.URL)
 
 	// When we run tests, the current directory is always the folder containing the test file.
 	// So we need to change the working directory to the app's root dir
@@ -42,7 +42,7 @@ func (s *ListHandlerSuite) requestValue() *resty.Response {
 	resp, err := s.client.R().
 		SetDoNotParseResponse(true).
 		SetHeader("Content-Type", "text/plain; charset=utf-8").
-		Get(s.ts.URL + "/")
+		Get("/")
 	s.Require().NoError(err)
 	return resp
 }

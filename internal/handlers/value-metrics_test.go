@@ -19,7 +19,7 @@ type ValueMetricsHandlerSuite struct {
 
 func (s *ValueMetricsHandlerSuite) SetupSuite() {
 	s.ts = httptest.NewServer(ServerRouter())
-	s.client = resty.New()
+	s.client = resty.New().SetBaseURL(s.ts.URL)
 }
 
 func (s *ValueMetricsHandlerSuite) TearDownSuite() {
@@ -32,11 +32,11 @@ func (s *ValueMetricsHandlerSuite) SetupSubTest() {
 	_ = storage.SetGauge("a", 1.5)
 }
 
-func (s *ValueMetricsHandlerSuite) requestValue(url string, data []byte) *resty.Response {
+func (s *ValueMetricsHandlerSuite) requestValue(data []byte) *resty.Response {
 	resp, err := s.client.R().
 		SetHeader("Content-Type", "application/json; charset=utf-8").
 		SetBody(data).
-		Post(url + "/value/")
+		Post("value/")
 	s.Require().NoError(err)
 
 	return resp
@@ -95,7 +95,7 @@ func (s *ValueMetricsHandlerSuite) TestValueMetricsHandler() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			resp := s.requestValue(s.ts.URL, []byte(tc.input))
+			resp := s.requestValue([]byte(tc.input))
 			s.Equal(tc.status, resp.StatusCode())
 
 			if resp.StatusCode() == http.StatusOK {

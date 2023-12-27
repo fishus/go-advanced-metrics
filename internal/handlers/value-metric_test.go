@@ -19,7 +19,7 @@ type ValueMetricHandlerSuite struct {
 
 func (s *ValueMetricHandlerSuite) SetupSuite() {
 	s.ts = httptest.NewServer(ServerRouter())
-	s.client = resty.New()
+	s.client = resty.New().SetBaseURL(s.ts.URL)
 }
 
 func (s *ValueMetricHandlerSuite) TearDownSuite() {
@@ -117,7 +117,7 @@ func (s *ValueMetricHandlerSuite) TestValueMetricHandler() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			resp := s.requestValue(s.ts.URL + tc.url)
+			resp := s.requestValue(tc.url)
 			s.Equal(tc.status, resp.StatusCode())
 
 			if resp.StatusCode() == http.StatusOK {
