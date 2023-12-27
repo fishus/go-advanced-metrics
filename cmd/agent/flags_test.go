@@ -2,11 +2,13 @@ package main
 
 import (
 	"flag"
-	"github.com/stretchr/testify/suite"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/suite"
 )
 
 type FlagsTestSuite struct {
@@ -62,27 +64,27 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 	testCases := []struct {
 		name string
 		args []string
-		want Config
+		want map[string]interface{}
 	}{
 		{
 			name: "Positive case #1",
 			args: nil,
-			want: Config{serverAddr: "localhost:8080", pollInterval: 2 * time.Second, reportInterval: 10 * time.Second},
+			want: map[string]interface{}{"serverAddr": "localhost:8080", "pollInterval": 2 * time.Second, "reportInterval": 10 * time.Second},
 		},
 		{
 			name: "Positive case #2",
 			args: []string{"-a=example.com:8181"},
-			want: Config{serverAddr: "example.com:8181", pollInterval: 2 * time.Second, reportInterval: 10 * time.Second},
+			want: map[string]interface{}{"serverAddr": "example.com:8181", "pollInterval": 2 * time.Second, "reportInterval": 10 * time.Second},
 		},
 		{
 			name: "Positive case #3",
 			args: []string{"-p=3"},
-			want: Config{serverAddr: "localhost:8080", pollInterval: 3 * time.Second, reportInterval: 10 * time.Second},
+			want: map[string]interface{}{"serverAddr": "localhost:8080", "pollInterval": 3 * time.Second, "reportInterval": 10 * time.Second},
 		},
 		{
 			name: "Positive case #4",
 			args: []string{"-r=7"},
-			want: Config{serverAddr: "localhost:8080", pollInterval: 2 * time.Second, reportInterval: 7 * time.Second},
+			want: map[string]interface{}{"serverAddr": "localhost:8080", "pollInterval": 2 * time.Second, "reportInterval": 7 * time.Second},
 		},
 	}
 
@@ -95,7 +97,12 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 			config := NewConfig()
 			config = parseFlags(config)
 
-			suite.Assert().EqualValues(tc.want, config)
+			configFields := reflect.ValueOf(config)
+
+			for k, want := range tc.want {
+				field := configFields.FieldByName(k)
+				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'", k)
+			}
 		})
 	}
 }
@@ -104,27 +111,27 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 	testCases := []struct {
 		name string
 		envs []string
-		want Config
+		want map[string]interface{}
 	}{
 		{
 			name: "Positive case #1",
 			envs: nil,
-			want: Config{serverAddr: "", pollInterval: 0, reportInterval: 0},
+			want: map[string]interface{}{"serverAddr": "", "pollInterval": 0 * time.Second, "reportInterval": 0 * time.Second},
 		},
 		{
 			name: "Positive case #2",
 			envs: []string{"ADDRESS=example.com:8181"},
-			want: Config{serverAddr: "example.com:8181", pollInterval: 0, reportInterval: 0},
+			want: map[string]interface{}{"serverAddr": "example.com:8181", "pollInterval": 0 * time.Second, "reportInterval": 0 * time.Second},
 		},
 		{
 			name: "Positive case #3",
 			envs: []string{"POLL_INTERVAL=3"},
-			want: Config{serverAddr: "", pollInterval: 3 * time.Second, reportInterval: 0},
+			want: map[string]interface{}{"serverAddr": "", "pollInterval": 3 * time.Second, "reportInterval": 0 * time.Second},
 		},
 		{
 			name: "Positive case #4",
 			envs: []string{"REPORT_INTERVAL=7"},
-			want: Config{serverAddr: "", pollInterval: 0, reportInterval: 7 * time.Second},
+			want: map[string]interface{}{"serverAddr": "", "pollInterval": 0 * time.Second, "reportInterval": 7 * time.Second},
 		},
 	}
 
@@ -149,7 +156,12 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 			config := NewConfig()
 			config = parseEnvs(config)
 
-			suite.Assert().EqualValues(tc.want, config)
+			configFields := reflect.ValueOf(config)
+
+			for k, want := range tc.want {
+				field := configFields.FieldByName(k)
+				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'", k)
+			}
 		})
 	}
 }
@@ -159,31 +171,31 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 		name string
 		args []string
 		envs []string
-		want Config
+		want map[string]interface{}
 	}{
 		{
 			name: "Positive case #1",
 			args: nil,
 			envs: nil,
-			want: Config{serverAddr: "localhost:8080", pollInterval: 2 * time.Second, reportInterval: 10 * time.Second},
+			want: map[string]interface{}{"serverAddr": "localhost:8080", "pollInterval": 2 * time.Second, "reportInterval": 10 * time.Second},
 		},
 		{
 			name: "Positive case #2",
 			args: []string{"-a=aaa.com:3333"},
 			envs: []string{"ADDRESS=bbb.com:5555"},
-			want: Config{serverAddr: "bbb.com:5555", pollInterval: 2 * time.Second, reportInterval: 10 * time.Second},
+			want: map[string]interface{}{"serverAddr": "bbb.com:5555", "pollInterval": 2 * time.Second, "reportInterval": 10 * time.Second},
 		},
 		{
 			name: "Positive case #3",
 			args: []string{"-p=21"},
 			envs: []string{"POLL_INTERVAL=31"},
-			want: Config{serverAddr: "localhost:8080", pollInterval: 31 * time.Second, reportInterval: 10 * time.Second},
+			want: map[string]interface{}{"serverAddr": "localhost:8080", "pollInterval": 31 * time.Second, "reportInterval": 10 * time.Second},
 		},
 		{
 			name: "Positive case #4",
 			args: []string{"-r=51"},
 			envs: []string{"REPORT_INTERVAL=71"},
-			want: Config{serverAddr: "localhost:8080", pollInterval: 2 * time.Second, reportInterval: 71 * time.Second},
+			want: map[string]interface{}{"serverAddr": "localhost:8080", "pollInterval": 2 * time.Second, "reportInterval": 71 * time.Second},
 		},
 	}
 
@@ -211,7 +223,12 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 
 			config := loadConfig()
 
-			suite.Assert().EqualValues(tc.want, config)
+			configFields := reflect.ValueOf(config)
+
+			for k, want := range tc.want {
+				field := configFields.FieldByName(k)
+				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'", k)
+			}
 		})
 	}
 }

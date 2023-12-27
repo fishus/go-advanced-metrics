@@ -7,16 +7,14 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 
+	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
-func ValueHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, fmt.Sprintf(`%s method not allowed`, r.Method), http.StatusMethodNotAllowed)
-		return
-	}
-
+// ValueMetricHandler returns metrics data
+func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 	var metricType, metricName string
 
 	metricType = chi.URLParam(r, "metricType")
@@ -47,7 +45,7 @@ func ValueHandler(w http.ResponseWriter, r *http.Request) {
 
 		_, err := io.WriteString(w, strconv.FormatInt(int64(metricValue), 10))
 		if err != nil {
-			panic(err)
+			logger.Log.Error(err.Error(), zap.String("event", "value metric handler"), zap.Int64("value", int64(metricValue)))
 		}
 
 	case metrics.TypeGauge:
@@ -62,7 +60,7 @@ func ValueHandler(w http.ResponseWriter, r *http.Request) {
 
 		_, err := io.WriteString(w, strconv.FormatFloat(float64(metricValue), 'f', -1, 64))
 		if err != nil {
-			panic(err)
+			logger.Log.Error(err.Error(), zap.String("event", "value metric handler"), zap.Float64("value", float64(metricValue)))
 		}
 
 	default:
