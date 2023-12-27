@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
+	"go.uber.org/zap"
 
 	"github.com/fishus/go-advanced-metrics/internal/collector"
+	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
@@ -16,6 +18,10 @@ var config Config
 
 func main() {
 	config = loadConfig()
+	if err := logger.Initialize(config.logLevel); err != nil {
+		panic(err)
+	}
+	defer logger.Log.Sync()
 	collectAndSendMetrics()
 }
 
@@ -26,6 +32,7 @@ func collectAndSendMetrics() {
 	ms := &runtime.MemStats{}
 
 	client := resty.New()
+	logger.Log.Info("Running agent", zap.String("address", config.serverAddr), zap.String("event", "start agent"))
 
 	now := time.Now()
 
@@ -62,7 +69,9 @@ func collectAndSendMetrics() {
 }
 
 func postUpdateMetrics(client *resty.Client, mtype, name, value string) error {
-	_, err := client.R().
+	logger.Log.Debug(`Sent POST /update/ request`, zap.String("event", "request sent"), zap.String("addr", config.serverAddr), zap.String("name", name), zap.String("type", mtype), zap.String("value", value))
+
+	resp, err := client.R().
 		SetPathParams(map[string]string{
 			"metricType":  mtype,
 			"metricName":  name,
@@ -72,8 +81,11 @@ func postUpdateMetrics(client *resty.Client, mtype, name, value string) error {
 		Post(fmt.Sprintf("http://%s/update/{metricType}/{metricName}/{metricValue}", config.serverAddr))
 
 	if err != nil {
-		panic(err)
+		logger.Log.Error(err.Error(),
+			zap.String("url", "http://"+config.serverAddr+"/update/"))
 	}
+
+	logger.Log.Debug(`Received response from the server`, zap.String("event", "response received"), zap.Any("headers", resp.Header()), zap.Any("body", resp.Body()))
 
 	return nil
 }

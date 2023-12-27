@@ -6,10 +6,11 @@ type Config struct {
 	serverAddr     string        // serverAddr store address and port to send requests to a server
 	pollInterval   time.Duration // Обновлять метрики с заданной частотой (в секундах)
 	reportInterval time.Duration // Отправлять метрики на сервер с заданной частотой (в секундах)
+	logLevel       string
 }
 
 func NewConfig() Config {
-	return Config{}
+	return Config{logLevel: "info"}
 }
 
 func (c Config) ServerAddr() string {
