@@ -7,7 +7,9 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 
+	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
@@ -43,7 +45,7 @@ func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 
 		_, err := io.WriteString(w, strconv.FormatInt(int64(metricValue), 10))
 		if err != nil {
-			panic(err)
+			logger.Log.Error(err.Error(), zap.String("event", "value metric handler"), zap.Int64("value", int64(metricValue)))
 		}
 
 	case metrics.TypeGauge:
@@ -58,7 +60,7 @@ func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 
 		_, err := io.WriteString(w, strconv.FormatFloat(float64(metricValue), 'f', -1, 64))
 		if err != nil {
-			panic(err)
+			logger.Log.Error(err.Error(), zap.String("event", "value metric handler"), zap.Float64("value", float64(metricValue)))
 		}
 
 	default:

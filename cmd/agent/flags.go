@@ -2,8 +2,12 @@ package main
 
 import (
 	"flag"
-	"github.com/caarlos0/env/v10"
 	"os"
+
+	"github.com/caarlos0/env/v10"
+	"go.uber.org/zap"
+
+	"github.com/fishus/go-advanced-metrics/internal/logger"
 )
 
 func loadConfig() Config {
@@ -42,7 +46,7 @@ func parseEnvs(config Config) Config {
 	}
 	err := env.Parse(&cfg)
 	if err != nil {
-		panic(err)
+		logger.Log.Panic(err.Error(), zap.String("event", "parse env"), zap.Strings("data", os.Environ()))
 	}
 
 	if cfg.ServerAddr != "" {
