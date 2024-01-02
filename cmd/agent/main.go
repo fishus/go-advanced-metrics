@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"runtime"
 	"time"
 
@@ -32,6 +35,11 @@ func collectAndSendMetrics() {
 	client := resty.New().SetBaseURL("http://" + config.serverAddr)
 	logger.Log.Info("Running agent", zap.String("address", config.serverAddr), zap.String("event", "start agent"))
 
+	gz, err := gzip.NewWriterLevel(nil, gzip.BestCompression)
+	if err != nil {
+		logger.Log.Panic(err.Error())
+		return
+	}
 	now := time.Now()
 
 	pollAfter := now.Add(config.pollInterval)
@@ -51,11 +59,11 @@ func collectAndSendMetrics() {
 			reportAfter = now.Add(config.reportInterval)
 
 			for name, c := range data.Counters() {
-				_ = postUpdateMetrics(client, metrics.TypeCounter, name, int64(c), 0)
+				_ = postUpdateMetrics(client, gz, metrics.TypeCounter, name, int64(c), 0)
 			}
 
 			for name, g := range data.Gauges() {
-				_ = postUpdateMetrics(client, metrics.TypeGauge, name, 0, float64(g))
+				_ = postUpdateMetrics(client, gz, metrics.TypeGauge, name, 0, float64(g))
 			}
 
 			// Reset metrics
@@ -66,7 +74,7 @@ func collectAndSendMetrics() {
 	}
 }
 
-func postUpdateMetrics(client *resty.Client, mtype, name string, delta int64, value float64) error {
+func postUpdateMetrics(client *resty.Client, gz *gzip.Writer, mtype, name string, delta int64, value float64) error {
 	type Metrics struct {
 		ID    string   `json:"id"`              // имя метрики
 		MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
@@ -88,17 +96,48 @@ func postUpdateMetrics(client *resty.Client, mtype, name string, delta int64, va
 		*metric.Value = value
 	}
 
-	logger.Log.Debug(`Sent POST /update/ request`, zap.String("event", "request sent"), zap.String("addr", config.serverAddr), zap.Any("metric", metric))
+	jsonBody, err := json.Marshal(metric)
+	if err != nil {
+		logger.Log.Error(err.Error(),
+			zap.String("event", "encode json"),
+			zap.Any("data", metric))
+		return err
+	}
+
+	buf := bytes.NewBuffer(nil)
+	gz.Reset(buf)
+	_, err = gz.Write(jsonBody)
+	if err != nil {
+		logger.Log.Error(err.Error(),
+			zap.String("event", "compress request"),
+			zap.ByteString("body", jsonBody))
+		return err
+	}
+	err = gz.Close()
+	if err != nil {
+		logger.Log.Error(err.Error(),
+			zap.String("event", "compress request"),
+			zap.ByteString("body", jsonBody))
+		return err
+	}
+
+	logger.Log.Debug(`Send POST /update/ request`,
+		zap.String("event", "send request"),
+		zap.String("addr", config.serverAddr),
+		zap.ByteString("body", jsonBody))
 
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json; charset=utf-8").
-		SetBody(metric).
+		SetHeader("Content-Encoding", "gzip").
+		SetBody(buf).
 		Post("update/")
 
 	if err != nil {
 		logger.Log.Error(err.Error(),
+			zap.String("event", "send request"),
 			zap.String("url", "http://"+config.serverAddr+"/update/"),
-			zap.Any("data", metric))
+			zap.ByteString("body", jsonBody))
+		return err
 	}
 
 	logger.Log.Debug(`Received response from the server`, zap.String("event", "response received"), zap.Any("headers", resp.Header()), zap.Any("body", resp.Body()))
