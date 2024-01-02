@@ -15,6 +15,7 @@ func ServerRouter() chi.Router {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestID)
 	r.Use(mw.Decompress)
+	r.Use(middleware.Compress(9, "application/json", "text/html"))
 	r.Use(middleware.RequestLogger(&logger.LogFormatter{}))
 
 	r.Post("/update/", UpdateMetricsHandler)
