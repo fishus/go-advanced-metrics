@@ -11,28 +11,28 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
-type ValueHandlerSuite struct {
+type ValueMetricHandlerSuite struct {
 	suite.Suite
 	ts     *httptest.Server
 	client *resty.Client
 }
 
-func (s *ValueHandlerSuite) SetupSuite() {
+func (s *ValueMetricHandlerSuite) SetupSuite() {
 	s.ts = httptest.NewServer(ServerRouter())
-	s.client = resty.New()
+	s.client = resty.New().SetBaseURL(s.ts.URL)
 }
 
-func (s *ValueHandlerSuite) TearDownSuite() {
+func (s *ValueMetricHandlerSuite) TearDownSuite() {
 	s.ts.Close()
 }
 
-func (s *ValueHandlerSuite) SetupTest() {
+func (s *ValueMetricHandlerSuite) SetupTest() {
 	storage = metrics.NewMemStorage()
 	_ = storage.AddCounter("a", 5)
 	_ = storage.SetGauge("a", 1.5)
 }
 
-func (s *ValueHandlerSuite) requestValue(url string) *resty.Response {
+func (s *ValueMetricHandlerSuite) requestValue(url string) *resty.Response {
 	resp, err := s.client.R().
 		SetHeader("Content-Type", "text/plain; charset=utf-8").
 		Get(url)
@@ -40,7 +40,7 @@ func (s *ValueHandlerSuite) requestValue(url string) *resty.Response {
 	return resp
 }
 
-func (s *ValueHandlerSuite) TestValueHandler() {
+func (s *ValueMetricHandlerSuite) TestValueMetricHandler() {
 	testCases := []struct {
 		name   string
 		url    string
@@ -93,7 +93,7 @@ func (s *ValueHandlerSuite) TestValueHandler() {
 			name:   "Negative case: Wrong url #3",
 			url:    "/value/",
 			want:   "",
-			status: http.StatusNotFound,
+			status: http.StatusMethodNotAllowed,
 		},
 		{
 			name:   "Negative case: Wrong url #4",
@@ -117,7 +117,7 @@ func (s *ValueHandlerSuite) TestValueHandler() {
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			resp := s.requestValue(s.ts.URL + tc.url)
+			resp := s.requestValue(tc.url)
 			s.Equal(tc.status, resp.StatusCode())
 
 			if resp.StatusCode() == http.StatusOK {
@@ -127,6 +127,6 @@ func (s *ValueHandlerSuite) TestValueHandler() {
 	}
 }
 
-func TestValueHandlerSuite(t *testing.T) {
-	suite.Run(t, new(ValueHandlerSuite))
+func TestValueMetricHandlerSuite(t *testing.T) {
+	suite.Run(t, new(ValueMetricHandlerSuite))
 }
