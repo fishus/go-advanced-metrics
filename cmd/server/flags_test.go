@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -23,7 +24,12 @@ func (suite *FlagsTestSuite) SetupSuite() {
 
 	// ENV
 	suite.osEnviron = make(map[string]string)
-	for _, e := range []string{"ADDRESS"} {
+	for _, e := range []string{
+		"ADDRESS",
+		"STORE_INTERVAL",
+		"FILE_STORAGE_PATH",
+		"RESTORE",
+	} {
 		suite.osEnviron[e] = os.Getenv(e)
 	}
 }
@@ -59,17 +65,42 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 	testCases := []struct {
 		name string
 		args []string
-		want map[string]string
+		want map[string]interface{}
 	}{
 		{
 			name: "Positive case #1",
 			args: nil,
-			want: map[string]string{"serverAddr": "localhost:8080"},
+			want: map[string]interface{}{
+				"serverAddr":      "localhost:8080",
+				"storeInterval":   300 * time.Second,
+				"fileStoragePath": "/tmp/metrics-db.json",
+				"isReqRestore":    true,
+			},
 		},
 		{
 			name: "Positive case #2",
 			args: []string{"-a=example.com:8181"},
-			want: map[string]string{"serverAddr": "example.com:8181"},
+			want: map[string]interface{}{"serverAddr": "example.com:8181"},
+		},
+		{
+			name: "Positive case #3",
+			args: []string{"-i=10"},
+			want: map[string]interface{}{"storeInterval": 10 * time.Second},
+		},
+		{
+			name: "Positive case #4",
+			args: []string{"-f=/temp/metrics-db.test.json"},
+			want: map[string]interface{}{"fileStoragePath": "/temp/metrics-db.test.json"},
+		},
+		{
+			name: "Positive case #5A",
+			args: []string{"-r=true"},
+			want: map[string]interface{}{"isReqRestore": true},
+		},
+		{
+			name: "Positive case #5B",
+			args: []string{"-r=false"},
+			want: map[string]interface{}{"isReqRestore": false},
 		},
 	}
 
@@ -85,7 +116,8 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 			configFields := reflect.ValueOf(config)
 
 			for k, want := range tc.want {
-				suite.Assert().EqualValues(want, configFields.FieldByName(k).String())
+				field := configFields.FieldByName(k)
+				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'", k)
 			}
 		})
 	}
@@ -95,17 +127,42 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 	testCases := []struct {
 		name string
 		envs []string
-		want map[string]string
+		want map[string]interface{}
 	}{
 		{
 			name: "Positive case #1",
 			envs: nil,
-			want: map[string]string{"serverAddr": ""},
+			want: map[string]interface{}{
+				"serverAddr":      "",
+				"storeInterval":   0 * time.Second,
+				"fileStoragePath": "",
+				"isReqRestore":    false,
+			},
 		},
 		{
 			name: "Positive case #2",
 			envs: []string{"ADDRESS=example.com:8181"},
-			want: map[string]string{"serverAddr": "example.com:8181"},
+			want: map[string]interface{}{"serverAddr": "example.com:8181"},
+		},
+		{
+			name: "Positive case #3",
+			envs: []string{"STORE_INTERVAL=10"},
+			want: map[string]interface{}{"storeInterval": 10 * time.Second},
+		},
+		{
+			name: "Positive case #4",
+			envs: []string{"FILE_STORAGE_PATH=/temp/metrics-db.test.json"},
+			want: map[string]interface{}{"fileStoragePath": "/temp/metrics-db.test.json"},
+		},
+		{
+			name: "Positive case #5A",
+			envs: []string{"RESTORE=true"},
+			want: map[string]interface{}{"isReqRestore": true},
+		},
+		{
+			name: "Positive case #5B",
+			envs: []string{"RESTORE=false"},
+			want: map[string]interface{}{"isReqRestore": false},
 		},
 	}
 
@@ -133,7 +190,8 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 			configFields := reflect.ValueOf(config)
 
 			for k, want := range tc.want {
-				suite.Assert().EqualValues(want, configFields.FieldByName(k).String())
+				field := configFields.FieldByName(k)
+				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'", k)
 			}
 		})
 	}
@@ -144,19 +202,108 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 		name string
 		args []string
 		envs []string
-		want map[string]string
+		want map[string]interface{}
 	}{
 		{
 			name: "Positive case #1",
 			args: nil,
 			envs: nil,
-			want: map[string]string{"serverAddr": "localhost:8080"},
+			want: map[string]interface{}{
+				"serverAddr":      "localhost:8080",
+				"storeInterval":   300 * time.Second,
+				"fileStoragePath": "/tmp/metrics-db.json",
+				"isReqRestore":    true,
+			},
 		},
 		{
-			name: "Positive case #2",
+			name: "Positive case #2A",
 			args: []string{"-a=aaa.com:3333"},
 			envs: []string{"ADDRESS=bbb.com:5555"},
-			want: map[string]string{"serverAddr": "bbb.com:5555"},
+			want: map[string]interface{}{"serverAddr": "bbb.com:5555"},
+		},
+		{
+			name: "Positive case #2B",
+			args: []string{"-a=aaa.com:3333"},
+			envs: nil,
+			want: map[string]interface{}{"serverAddr": "aaa.com:3333"},
+		},
+		{
+			name: "Positive case #2C",
+			args: nil,
+			envs: []string{"ADDRESS=bbb.com:5555"},
+			want: map[string]interface{}{"serverAddr": "bbb.com:5555"},
+		},
+		{
+			name: "Positive case #3A",
+			args: []string{"-i=100"},
+			envs: []string{"STORE_INTERVAL=200"},
+			want: map[string]interface{}{"storeInterval": 200 * time.Second},
+		},
+		{
+			name: "Positive case #3B",
+			args: []string{"-i=100"},
+			envs: nil,
+			want: map[string]interface{}{"storeInterval": 100 * time.Second},
+		},
+		{
+			name: "Positive case #3C",
+			args: nil,
+			envs: []string{"STORE_INTERVAL=200"},
+			want: map[string]interface{}{"storeInterval": 200 * time.Second},
+		},
+		{
+			name: "Positive case #4A",
+			args: []string{"-f=/temp/metrics-db.test1.json"},
+			envs: []string{"FILE_STORAGE_PATH=/temp/metrics-db.test2.json"},
+			want: map[string]interface{}{"fileStoragePath": "/temp/metrics-db.test2.json"},
+		},
+		{
+			name: "Positive case #4B",
+			args: []string{"-f=/temp/metrics-db.test1.json"},
+			envs: nil,
+			want: map[string]interface{}{"fileStoragePath": "/temp/metrics-db.test1.json"},
+		},
+		{
+			name: "Positive case #4C",
+			args: nil,
+			envs: []string{"FILE_STORAGE_PATH=/temp/metrics-db.test2.json"},
+			want: map[string]interface{}{"fileStoragePath": "/temp/metrics-db.test2.json"},
+		},
+		{
+			name: "Positive case #5A",
+			args: []string{"-r=false"},
+			envs: []string{"RESTORE=true"},
+			want: map[string]interface{}{"isReqRestore": true},
+		},
+		{
+			name: "Positive case #5B",
+			args: []string{"-r=true"},
+			envs: []string{"RESTORE=false"},
+			want: map[string]interface{}{"isReqRestore": false},
+		},
+		{
+			name: "Positive case #5C",
+			args: []string{"-r=true"},
+			envs: nil,
+			want: map[string]interface{}{"isReqRestore": true},
+		},
+		{
+			name: "Positive case #5D",
+			args: []string{"-r=false"},
+			envs: nil,
+			want: map[string]interface{}{"isReqRestore": false},
+		},
+		{
+			name: "Positive case #5E",
+			args: nil,
+			envs: []string{"RESTORE=true"},
+			want: map[string]interface{}{"isReqRestore": true},
+		},
+		{
+			name: "Positive case #5F",
+			args: nil,
+			envs: []string{"RESTORE=false"},
+			want: map[string]interface{}{"isReqRestore": false},
 		},
 	}
 
@@ -187,7 +334,8 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 			configFields := reflect.ValueOf(config)
 
 			for k, want := range tc.want {
-				suite.Assert().EqualValues(want, configFields.FieldByName(k).String())
+				field := configFields.FieldByName(k)
+				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'", k)
 			}
 		})
 	}

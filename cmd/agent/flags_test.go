@@ -69,22 +69,26 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 		{
 			name: "Positive case #1",
 			args: nil,
-			want: map[string]interface{}{"serverAddr": "localhost:8080", "pollInterval": 2 * time.Second, "reportInterval": 10 * time.Second},
+			want: map[string]interface{}{
+				"serverAddr":     "localhost:8080",
+				"pollInterval":   2 * time.Second,
+				"reportInterval": 10 * time.Second,
+			},
 		},
 		{
 			name: "Positive case #2",
 			args: []string{"-a=example.com:8181"},
-			want: map[string]interface{}{"serverAddr": "example.com:8181", "pollInterval": 2 * time.Second, "reportInterval": 10 * time.Second},
+			want: map[string]interface{}{"serverAddr": "example.com:8181"},
 		},
 		{
 			name: "Positive case #3",
 			args: []string{"-p=3"},
-			want: map[string]interface{}{"serverAddr": "localhost:8080", "pollInterval": 3 * time.Second, "reportInterval": 10 * time.Second},
+			want: map[string]interface{}{"pollInterval": 3 * time.Second},
 		},
 		{
 			name: "Positive case #4",
 			args: []string{"-r=7"},
-			want: map[string]interface{}{"serverAddr": "localhost:8080", "pollInterval": 2 * time.Second, "reportInterval": 7 * time.Second},
+			want: map[string]interface{}{"reportInterval": 7 * time.Second},
 		},
 	}
 
@@ -116,22 +120,26 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 		{
 			name: "Positive case #1",
 			envs: nil,
-			want: map[string]interface{}{"serverAddr": "", "pollInterval": 0 * time.Second, "reportInterval": 0 * time.Second},
+			want: map[string]interface{}{
+				"serverAddr":     "",
+				"pollInterval":   0 * time.Second,
+				"reportInterval": 0 * time.Second,
+			},
 		},
 		{
 			name: "Positive case #2",
 			envs: []string{"ADDRESS=example.com:8181"},
-			want: map[string]interface{}{"serverAddr": "example.com:8181", "pollInterval": 0 * time.Second, "reportInterval": 0 * time.Second},
+			want: map[string]interface{}{"serverAddr": "example.com:8181"},
 		},
 		{
 			name: "Positive case #3",
 			envs: []string{"POLL_INTERVAL=3"},
-			want: map[string]interface{}{"serverAddr": "", "pollInterval": 3 * time.Second, "reportInterval": 0 * time.Second},
+			want: map[string]interface{}{"pollInterval": 3 * time.Second},
 		},
 		{
 			name: "Positive case #4",
 			envs: []string{"REPORT_INTERVAL=7"},
-			want: map[string]interface{}{"serverAddr": "", "pollInterval": 0 * time.Second, "reportInterval": 7 * time.Second},
+			want: map[string]interface{}{"reportInterval": 7 * time.Second},
 		},
 	}
 
@@ -177,25 +185,65 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 			name: "Positive case #1",
 			args: nil,
 			envs: nil,
-			want: map[string]interface{}{"serverAddr": "localhost:8080", "pollInterval": 2 * time.Second, "reportInterval": 10 * time.Second},
+			want: map[string]interface{}{
+				"serverAddr":     "localhost:8080",
+				"pollInterval":   2 * time.Second,
+				"reportInterval": 10 * time.Second,
+			},
 		},
 		{
-			name: "Positive case #2",
+			name: "Positive case #2A",
 			args: []string{"-a=aaa.com:3333"},
 			envs: []string{"ADDRESS=bbb.com:5555"},
-			want: map[string]interface{}{"serverAddr": "bbb.com:5555", "pollInterval": 2 * time.Second, "reportInterval": 10 * time.Second},
+			want: map[string]interface{}{"serverAddr": "bbb.com:5555"},
 		},
 		{
-			name: "Positive case #3",
+			name: "Positive case #2B",
+			args: []string{"-a=aaa.com:3333"},
+			envs: nil,
+			want: map[string]interface{}{"serverAddr": "aaa.com:3333"},
+		},
+		{
+			name: "Positive case #2C",
+			args: nil,
+			envs: []string{"ADDRESS=bbb.com:5555"},
+			want: map[string]interface{}{"serverAddr": "bbb.com:5555"},
+		},
+		{
+			name: "Positive case #3A",
 			args: []string{"-p=21"},
 			envs: []string{"POLL_INTERVAL=31"},
-			want: map[string]interface{}{"serverAddr": "localhost:8080", "pollInterval": 31 * time.Second, "reportInterval": 10 * time.Second},
+			want: map[string]interface{}{"pollInterval": 31 * time.Second},
 		},
 		{
-			name: "Positive case #4",
+			name: "Positive case #3B",
+			args: []string{"-p=21"},
+			envs: nil,
+			want: map[string]interface{}{"pollInterval": 21 * time.Second},
+		},
+		{
+			name: "Positive case #3C",
+			args: nil,
+			envs: []string{"POLL_INTERVAL=31"},
+			want: map[string]interface{}{"pollInterval": 31 * time.Second},
+		},
+		{
+			name: "Positive case #4A",
 			args: []string{"-r=51"},
 			envs: []string{"REPORT_INTERVAL=71"},
-			want: map[string]interface{}{"serverAddr": "localhost:8080", "pollInterval": 2 * time.Second, "reportInterval": 71 * time.Second},
+			want: map[string]interface{}{"reportInterval": 71 * time.Second},
+		},
+		{
+			name: "Positive case #4B",
+			args: []string{"-r=51"},
+			envs: nil,
+			want: map[string]interface{}{"reportInterval": 51 * time.Second},
+		},
+		{
+			name: "Positive case #4C",
+			args: nil,
+			envs: []string{"REPORT_INTERVAL=71"},
+			want: map[string]interface{}{"reportInterval": 71 * time.Second},
 		},
 	}
 

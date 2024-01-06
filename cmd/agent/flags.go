@@ -49,15 +49,13 @@ func parseEnvs(config Config) Config {
 		logger.Log.Panic(err.Error(), zap.String("event", "parse env"), zap.Strings("data", os.Environ()))
 	}
 
-	if cfg.ServerAddr != "" {
+	if _, exists := os.LookupEnv("ADDRESS"); exists {
 		config = config.SetServerAddr(cfg.ServerAddr)
 	}
-
-	if cfg.PollInterval != 0 {
+	if _, exists := os.LookupEnv("POLL_INTERVAL"); exists {
 		config = config.SetPollIntervalInSeconds(cfg.PollInterval)
 	}
-
-	if cfg.ReportInterval != 0 {
+	if _, exists := os.LookupEnv("REPORT_INTERVAL"); exists {
 		config = config.SetReportIntervalInSeconds(cfg.ReportInterval)
 	}
 
