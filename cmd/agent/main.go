@@ -62,8 +62,8 @@ func collectAndSendMetrics() {
 				_ = postUpdateMetrics(client, gz, metrics.TypeCounter, name, int64(c), 0)
 			}
 
-			for name, g := range data.Gauges() {
-				_ = postUpdateMetrics(client, gz, metrics.TypeGauge, name, 0, float64(g))
+			for name, gauge := range data.Gauges() {
+				_ = postUpdateMetrics(client, gz, metrics.TypeGauge, name, 0, gauge.Value())
 			}
 
 			// Reset metrics

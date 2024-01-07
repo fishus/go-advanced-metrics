@@ -49,7 +49,7 @@ func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case metrics.TypeGauge:
-		metricValue, ok := storage.Gauge(metricName)
+		Gauge, ok := storage.Gauge(metricName)
 		if !ok {
 			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
 			http.Error(w, fmt.Sprintf(`Gauge '%s' not found`, metricName), http.StatusNotFound)
@@ -58,9 +58,9 @@ func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusOK)
 
-		_, err := io.WriteString(w, strconv.FormatFloat(float64(metricValue), 'f', -1, 64))
+		_, err := io.WriteString(w, strconv.FormatFloat(Gauge.Value(), 'f', -1, 64))
 		if err != nil {
-			logger.Log.Error(err.Error(), zap.String("event", "value metric handler"), zap.Float64("value", float64(metricValue)))
+			logger.Log.Error(err.Error(), zap.String("event", "value metric handler"), zap.Float64("value", Gauge.Value()))
 		}
 
 	default:

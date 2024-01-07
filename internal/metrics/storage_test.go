@@ -18,7 +18,7 @@ func TestNewMemStorage(t *testing.T) {
 
 func TestMemStorage_Gauge(t *testing.T) {
 	type want struct {
-		gauge float64
+		gauge Gauge
 		ok    bool
 	}
 	testCases := []struct {
@@ -29,10 +29,10 @@ func TestMemStorage_Gauge(t *testing.T) {
 	}{
 		{
 			name:   "Positive case #1",
-			gauges: map[string]Gauge{"a": Gauge(2.1), "b": Gauge(-1.5)},
+			gauges: map[string]Gauge{"a": {"a", 2.1}, "b": {"b", -1.5}},
 			key:    "b",
 			want: want{
-				gauge: -1.5,
+				gauge: Gauge{"b", -1.5},
 				ok:    true,
 			},
 		},
@@ -46,7 +46,7 @@ func TestMemStorage_Gauge(t *testing.T) {
 		},
 		{
 			name:   "Negative case #2",
-			gauges: map[string]Gauge{"a": Gauge(2.1)},
+			gauges: map[string]Gauge{"a": {"a", 2.1}},
 			key:    "b",
 			want: want{
 				ok: false,
@@ -60,20 +60,72 @@ func TestMemStorage_Gauge(t *testing.T) {
 				gauges: tc.gauges,
 			}
 			g, ok := m.Gauge(tc.key)
+			require.Equal(t, tc.want.ok, ok)
+			if tc.want.ok {
+				assert.EqualValues(t, tc.want.gauge, g)
+			}
+		})
+	}
+}
+
+func TestMemStorage_GaugeValue(t *testing.T) {
+	type want struct {
+		value float64
+		ok    bool
+	}
+	testCases := []struct {
+		name   string
+		gauges map[string]Gauge
+		key    string
+		want   want
+	}{
+		{
+			name:   "Positive case #1",
+			gauges: map[string]Gauge{"a": {"a", 2.1}, "b": {"b", -1.5}},
+			key:    "b",
+			want: want{
+				value: -1.5,
+				ok:    true,
+			},
+		},
+		{
+			name:   "Negative case #1",
+			gauges: map[string]Gauge{},
+			key:    "a",
+			want: want{
+				ok: false,
+			},
+		},
+		{
+			name:   "Negative case #2",
+			gauges: map[string]Gauge{"a": {"a", 2.1}},
+			key:    "b",
+			want: want{
+				ok: false,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := &MemStorage{
+				gauges: tc.gauges,
+			}
+			g, ok := m.GaugeValue(tc.key)
 			if !tc.want.ok {
 				assert.Equal(t, tc.want.ok, ok)
 				return
 			}
 			require.Equal(t, tc.want.ok, ok)
-			assert.Equal(t, tc.want.gauge, float64(g))
+			assert.Equal(t, tc.want.value, g)
 		})
 	}
 }
 
 func TestMemStorage_Gauges(t *testing.T) {
 	gauges := map[string]Gauge{}
-	gauges["a"] = Gauge(1.0)
-	gauges["b"] = Gauge(2.1)
+	gauges["a"] = Gauge{"a", 1.0}
+	gauges["b"] = Gauge{"b", 2.1}
 
 	m := &MemStorage{
 		gauges: gauges,
@@ -94,16 +146,16 @@ func TestMemStorage_SetGauge(t *testing.T) {
 			name:    "Positive case #1",
 			key:     "a",
 			value:   5.0,
-			gauges:  map[string]Gauge{"a": Gauge(1.0)},
-			want:    map[string]Gauge{"a": Gauge(5.0)},
+			gauges:  map[string]Gauge{"a": {"a", 1.0}},
+			want:    map[string]Gauge{"a": {"a", 5.0}},
 			wantErr: false,
 		},
 		{
 			name:    "Positive case #2",
 			key:     "a",
 			value:   -5.0,
-			gauges:  map[string]Gauge{"a": Gauge(1.0)},
-			want:    map[string]Gauge{"a": Gauge(-5.0)},
+			gauges:  map[string]Gauge{"a": {"a", 1.0}},
+			want:    map[string]Gauge{"a": {"a", -5.0}},
 			wantErr: false,
 		},
 		{
@@ -111,15 +163,15 @@ func TestMemStorage_SetGauge(t *testing.T) {
 			key:     "a",
 			value:   1.0,
 			gauges:  map[string]Gauge{},
-			want:    map[string]Gauge{"a": Gauge(1.0)},
+			want:    map[string]Gauge{"a": {"a", 1.0}},
 			wantErr: false,
 		},
 		{
 			name:    "Positive case #3",
 			key:     "b",
 			value:   3.0,
-			gauges:  map[string]Gauge{"a": Gauge(1.0)},
-			want:    map[string]Gauge{"a": Gauge(1.0), "b": Gauge(3.0)},
+			gauges:  map[string]Gauge{"a": {"a", 1.0}},
+			want:    map[string]Gauge{"a": {"a", 1.0}, "b": {"b", 3.0}},
 			wantErr: false,
 		},
 		{
@@ -127,8 +179,16 @@ func TestMemStorage_SetGauge(t *testing.T) {
 			key:     "a",
 			value:   5.0,
 			gauges:  nil,
-			want:    map[string]Gauge{"a": Gauge(5)},
+			want:    map[string]Gauge{"a": {"a", 5}},
 			wantErr: false,
+		},
+		{
+			name:    "Negative case #1",
+			key:     "",
+			value:   5.0,
+			gauges:  map[string]Gauge{},
+			want:    map[string]Gauge{},
+			wantErr: true,
 		},
 	}
 
@@ -139,10 +199,10 @@ func TestMemStorage_SetGauge(t *testing.T) {
 			}
 			err := m.SetGauge(tc.key, tc.value)
 			if tc.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
+				require.Error(t, err)
+				return
 			}
+			require.NoError(t, err)
 			assert.Equal(t, tc.want, m.gauges)
 		})
 	}
@@ -271,10 +331,10 @@ func TestMemStorage_AddCounter(t *testing.T) {
 			}
 			err := m.AddCounter(tc.key, tc.value)
 			if tc.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
+				require.Error(t, err)
+				return
 			}
+			require.NoError(t, err)
 			assert.Equal(t, tc.want, m.counters)
 		})
 	}
