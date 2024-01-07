@@ -210,7 +210,7 @@ func TestMemStorage_SetGauge(t *testing.T) {
 
 func TestMemStorage_Counter(t *testing.T) {
 	type want struct {
-		counter int64
+		counter Counter
 		ok      bool
 	}
 	testCases := []struct {
@@ -221,10 +221,10 @@ func TestMemStorage_Counter(t *testing.T) {
 	}{
 		{
 			name:     "Positive case #1",
-			counters: map[string]Counter{"a": Counter(10), "b": Counter(20)},
+			counters: map[string]Counter{"a": {"a", 10}, "b": {"b", 20}},
 			key:      "b",
 			want: want{
-				counter: 20,
+				counter: Counter{"b", 20},
 				ok:      true,
 			},
 		},
@@ -238,7 +238,7 @@ func TestMemStorage_Counter(t *testing.T) {
 		},
 		{
 			name:     "Negative case #2",
-			counters: map[string]Counter{"a": Counter(10)},
+			counters: map[string]Counter{"a": {"a", 10}},
 			key:      "b",
 			want: want{
 				ok: false,
@@ -252,20 +252,72 @@ func TestMemStorage_Counter(t *testing.T) {
 				counters: tc.counters,
 			}
 			c, ok := m.Counter(tc.key)
+			require.Equal(t, tc.want.ok, ok)
+			if tc.want.ok {
+				assert.EqualValues(t, tc.want.counter, c)
+			}
+		})
+	}
+}
+
+func TestMemStorage_CounterValue(t *testing.T) {
+	type want struct {
+		value int64
+		ok    bool
+	}
+	testCases := []struct {
+		name     string
+		counters map[string]Counter
+		key      string
+		want     want
+	}{
+		{
+			name:     "Positive case #1",
+			counters: map[string]Counter{"a": {"a", 10}, "b": {"b", 20}},
+			key:      "b",
+			want: want{
+				value: 20,
+				ok:    true,
+			},
+		},
+		{
+			name:     "Negative case #1",
+			counters: map[string]Counter{},
+			key:      "a",
+			want: want{
+				ok: false,
+			},
+		},
+		{
+			name:     "Negative case #2",
+			counters: map[string]Counter{"a": {"a", 10}},
+			key:      "b",
+			want: want{
+				ok: false,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := &MemStorage{
+				counters: tc.counters,
+			}
+			c, ok := m.CounterValue(tc.key)
 			if !tc.want.ok {
 				assert.Equal(t, tc.want.ok, ok)
 				return
 			}
 			require.Equal(t, tc.want.ok, ok)
-			assert.Equal(t, tc.want.counter, int64(c))
+			assert.Equal(t, tc.want.value, c)
 		})
 	}
 }
 
 func TestMemStorage_Counters(t *testing.T) {
 	counters := map[string]Counter{}
-	counters["a"] = Counter(1)
-	counters["b"] = Counter(100)
+	counters["a"] = Counter{"a", 1}
+	counters["b"] = Counter{"b", 100}
 
 	m := &MemStorage{
 		counters: counters,
@@ -286,8 +338,8 @@ func TestMemStorage_AddCounter(t *testing.T) {
 			name:     "Positive case #1",
 			key:      "a",
 			value:    1,
-			counters: map[string]Counter{"a": Counter(2)},
-			want:     map[string]Counter{"a": Counter(3)},
+			counters: map[string]Counter{"a": {"a", 2}},
+			want:     map[string]Counter{"a": {"a", 3}},
 			wantErr:  false,
 		},
 		{
@@ -295,15 +347,15 @@ func TestMemStorage_AddCounter(t *testing.T) {
 			key:      "a",
 			value:    1,
 			counters: map[string]Counter{},
-			want:     map[string]Counter{"a": Counter(1)},
+			want:     map[string]Counter{"a": {"a", 1}},
 			wantErr:  false,
 		},
 		{
 			name:     "Positive case #3",
 			key:      "b",
 			value:    1,
-			counters: map[string]Counter{"a": Counter(2)},
-			want:     map[string]Counter{"a": Counter(2), "b": Counter(1)},
+			counters: map[string]Counter{"a": {"a", 2}},
+			want:     map[string]Counter{"a": {"a", 2}, "b": {"b", 1}},
 			wantErr:  false,
 		},
 		{
@@ -311,15 +363,15 @@ func TestMemStorage_AddCounter(t *testing.T) {
 			key:      "a",
 			value:    1,
 			counters: nil,
-			want:     map[string]Counter{"a": Counter(1)},
+			want:     map[string]Counter{"a": {"a", 1}},
 			wantErr:  false,
 		},
 		{
 			name:     "Negative case #1",
 			key:      "a",
 			value:    -1,
-			counters: map[string]Counter{"a": Counter(2)},
-			want:     map[string]Counter{"a": Counter(2)},
+			counters: map[string]Counter{"a": {"a", 2}},
+			want:     map[string]Counter{"a": {"a", 2}},
 			wantErr:  true,
 		},
 	}

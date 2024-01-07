@@ -1,8 +1,8 @@
 {{ if .Counters | len -}}
 <h3>Counters:</h3>
 <ul data-id="counters">
-{{ range $name, $value := .Counters -}}
-    <li><strong>{{ $name }}</strong>: <span>{{ $value }}</span></li>
+{{ range $counter := .Counters -}}
+    <li><strong>{{ $counter.Name }}</strong>: <span>{{ $counter.Value }}</span></li>
 {{ end -}}
 </ul>
 {{ else -}}

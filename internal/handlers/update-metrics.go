@@ -58,8 +58,9 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 			logger.Log.Debug(err.Error(), zap.Any("metric", metric))
 			return
 		}
-		counter, _ := storage.Counter(metric.ID)
-		*metric.Delta = int64(counter)
+		counterValue, _ := storage.CounterValue(metric.ID)
+		metric.Delta = new(int64)
+		*metric.Delta = counterValue
 		metric.Value = nil
 	case metrics.TypeGauge:
 		if metric.Value == nil {

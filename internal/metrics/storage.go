@@ -24,6 +24,7 @@ var _ GaugeRepositories = (*MemStorage)(nil)
 
 type CounterRepositories interface {
 	Counter(name string) (Counter, bool)
+	CounterValue(name string) (int64, bool)
 	Counters() map[string]Counter
 	AddCounter(name string, value int64) error
 }
@@ -84,6 +85,14 @@ func (m *MemStorage) Counter(name string) (Counter, bool) {
 	return v, ok
 }
 
+// CounterValue returns the counter metric value by name
+func (m *MemStorage) CounterValue(name string) (int64, bool) {
+	if v, ok := m.counters[name]; ok {
+		return v.Value, ok
+	}
+	return 0, false
+}
+
 // Counters returns all counter metrics
 func (m *MemStorage) Counters() map[string]Counter {
 	return m.counters
@@ -93,14 +102,19 @@ func (m *MemStorage) AddCounter(name string, value int64) error {
 	if m.counters == nil {
 		m.counters = make(map[string]Counter)
 	}
-	c, ok := m.counters[name]
+	counter, ok := m.counters[name]
 	if !ok {
-		c = Counter(0)
+		c, err := NewCounter(name, value)
+		if err != nil {
+			return err
+		}
+		counter = *c
+	} else {
+		err := counter.AddValue(value)
+		if err != nil {
+			return err
+		}
 	}
-	err := c.Add(value)
-	if err != nil {
-		return err
-	}
-	m.counters[name] = c
+	m.counters[name] = counter
 	return nil
 }
