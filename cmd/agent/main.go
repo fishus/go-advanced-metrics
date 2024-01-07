@@ -58,8 +58,8 @@ func collectAndSendMetrics() {
 		if now.After(reportAfter) {
 			reportAfter = now.Add(config.reportInterval)
 
-			for name, c := range data.Counters() {
-				_ = postUpdateMetrics(client, gz, metrics.TypeCounter, name, int64(c), 0)
+			for name, counter := range data.Counters() {
+				_ = postUpdateMetrics(client, gz, metrics.TypeCounter, name, counter.Value(), 0)
 			}
 
 			for name, gauge := range data.Gauges() {

@@ -34,7 +34,7 @@ func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch metricType {
 	case metrics.TypeCounter:
-		metricValue, ok := storage.Counter(metricName)
+		Counter, ok := storage.Counter(metricName)
 		if !ok {
 			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
 			http.Error(w, fmt.Sprintf(`Counter '%s' not found`, metricName), http.StatusNotFound)
@@ -43,9 +43,9 @@ func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusOK)
 
-		_, err := io.WriteString(w, strconv.FormatInt(int64(metricValue), 10))
+		_, err := io.WriteString(w, strconv.FormatInt(Counter.Value(), 10))
 		if err != nil {
-			logger.Log.Error(err.Error(), zap.String("event", "value metric handler"), zap.Int64("value", int64(metricValue)))
+			logger.Log.Error(err.Error(), zap.String("event", "value metric handler"), zap.Int64("value", Counter.Value()))
 		}
 
 	case metrics.TypeGauge:

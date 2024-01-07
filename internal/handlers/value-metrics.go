@@ -46,7 +46,7 @@ func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch metric.MType {
 	case metrics.TypeCounter:
-		counter, ok := storage.Counter(metric.ID)
+		counterValue, ok := storage.CounterValue(metric.ID)
 		if !ok {
 			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
 			JSONError(w, fmt.Sprintf(`Counter '%s' not found`, metric.ID), http.StatusNotFound)
@@ -54,7 +54,7 @@ func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		metric.Delta = new(int64)
-		*metric.Delta = int64(counter)
+		*metric.Delta = counterValue
 		metric.Value = nil
 	case metrics.TypeGauge:
 		gaugeValue, ok := storage.GaugeValue(metric.ID)
