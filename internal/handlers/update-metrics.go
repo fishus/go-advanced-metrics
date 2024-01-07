@@ -74,8 +74,9 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 			logger.Log.Debug(err.Error(), zap.Any("metric", metric))
 			return
 		}
-		gauge, _ := storage.Gauge(metric.ID)
-		*metric.Value = float64(gauge)
+		gaugeValue, _ := storage.GaugeValue(metric.ID)
+		metric.Value = new(float64)
+		*metric.Value = gaugeValue
 		metric.Delta = nil
 	default:
 		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.

@@ -12,8 +12,8 @@
 {{ if .Gauges | len -}}
 <h3>Gauges:</h3>
 <ul data-id="gauges">
-{{ range $name, $value := .Gauges -}}
-    <li><strong>{{ $name }}</strong>: <span>{{ $value }}</span></li>
+{{ range $gauge := .Gauges -}}
+    <li><strong>{{ $gauge.Name }}</strong>: <span>{{ $gauge.Value }}</span></li>
 {{ end -}}
 </ul>
 {{ else -}}

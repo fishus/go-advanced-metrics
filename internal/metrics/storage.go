@@ -15,6 +15,7 @@ func NewMemStorage() *MemStorage {
 
 type GaugeRepositories interface {
 	Gauge(name string) (Gauge, bool)
+	GaugeValue(name string) (float64, bool)
 	Gauges() map[string]Gauge
 	SetGauge(name string, value float64) error
 }
@@ -43,6 +44,14 @@ func (m *MemStorage) Gauge(name string) (Gauge, bool) {
 	return v, ok
 }
 
+// GaugeValue returns the gauge metric value by name
+func (m *MemStorage) GaugeValue(name string) (float64, bool) {
+	if v, ok := m.gauges[name]; ok {
+		return v.Value, ok
+	}
+	return 0, false
+}
+
 // Gauges returns all gauge metrics
 func (m *MemStorage) Gauges() map[string]Gauge {
 	return m.gauges
@@ -52,15 +61,20 @@ func (m *MemStorage) SetGauge(name string, value float64) error {
 	if m.gauges == nil {
 		m.gauges = make(map[string]Gauge)
 	}
-	g, ok := m.gauges[name]
+	gauge, ok := m.gauges[name]
 	if !ok {
-		g = Gauge(0)
+		g, err := NewGauge(name, value)
+		if err != nil {
+			return err
+		}
+		gauge = *g
+	} else {
+		err := gauge.SetValue(value)
+		if err != nil {
+			return err
+		}
 	}
-	err := g.Set(value)
-	if err != nil {
-		return err
-	}
-	m.gauges[name] = g
+	m.gauges[name] = gauge
 	return nil
 }
 
