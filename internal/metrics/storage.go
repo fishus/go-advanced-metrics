@@ -1,9 +1,20 @@
 package metrics
 
+import (
+	"encoding/json"
+	"errors"
+	"os"
+	"sync"
+)
+
+var ErrEmptyFilename = errors.New("filename for store metrics data is empty")
+
 // MemStorage contains a set of values for all metrics
 type MemStorage struct {
 	gauges   map[string]Gauge
 	counters map[string]Counter
+	Filename string
+	muSave   sync.Mutex
 }
 
 func NewMemStorage() *MemStorage {
@@ -11,6 +22,80 @@ func NewMemStorage() *MemStorage {
 		gauges:   make(map[string]Gauge),
 		counters: make(map[string]Counter),
 	}
+}
+
+// Save saves metric values to a file.
+func (m *MemStorage) Save() error {
+	m.muSave.Lock()
+	defer m.muSave.Unlock()
+
+	if m.Filename == "" {
+		return ErrEmptyFilename
+	}
+
+	file, err := os.OpenFile(m.Filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+
+	err = encoder.Encode(&m)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Load reads metric values from a file.
+func (m *MemStorage) Load() error {
+	if m.Filename == "" {
+		return ErrEmptyFilename
+	}
+
+	file, err := os.OpenFile(m.Filename, os.O_RDONLY, 0)
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+
+	if err = decoder.Decode(&m); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *MemStorage) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Gauges   map[string]Gauge   `json:"gauges"`
+		Counters map[string]Counter `json:"counters"`
+	}{
+		Gauges:   m.gauges,
+		Counters: m.counters,
+	})
+}
+
+func (m *MemStorage) UnmarshalJSON(data []byte) error {
+	aux := &struct {
+		Gauges   map[string]Gauge   `json:"gauges"`
+		Counters map[string]Counter `json:"counters"`
+	}{}
+
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+
+	m.gauges = aux.Gauges
+	m.counters = aux.Counters
+
+	return nil
 }
 
 type GaugeRepositories interface {
@@ -35,6 +120,8 @@ var _ CounterRepositories = (*MemStorage)(nil)
 type Repositories interface {
 	GaugeRepositories
 	CounterRepositories
+	Save() error
+	Load() error
 }
 
 var _ Repositories = (*MemStorage)(nil)

@@ -1,6 +1,9 @@
 package metrics
 
 import (
+	"io"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -388,6 +391,265 @@ func TestMemStorage_AddCounter(t *testing.T) {
 			}
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, m.counters)
+		})
+	}
+}
+
+func TestMemStorage_Save(t *testing.T) {
+	testCases := []struct {
+		name     string
+		filename func() string
+		storage  *MemStorage
+		want     string
+		wantErr  bool
+	}{
+		{
+			name: "Positive case #1",
+			filename: func() string {
+				tmpDir := os.TempDir()
+				file, err := os.CreateTemp(tmpDir, "test*.json")
+				if err != nil {
+					return "test81278123.json"
+				}
+				_ = file.Close()
+				return file.Name()
+			},
+			storage: &MemStorage{
+				gauges:   map[string]Gauge{"a": {"a", 1.5}},
+				counters: map[string]Counter{"b": {"b", 2}},
+			},
+			want:    `{"gauges":{"a":{"name":"a","value":1.5}},"counters":{"b":{"name":"b","value":2}}}`,
+			wantErr: false,
+		},
+		{
+			name: "Positive case #2",
+			filename: func() string {
+				tmpDir := os.TempDir()
+				file, err := os.CreateTemp(tmpDir, "test*.json")
+				if err != nil {
+					return "test13640364134.json"
+				}
+				_ = file.Close()
+				return file.Name()
+			},
+			storage: &MemStorage{
+				gauges:   make(map[string]Gauge),
+				counters: make(map[string]Counter),
+			},
+			want:    `{"gauges":{},"counters":{}}`,
+			wantErr: false,
+		},
+		{
+			name: "Positive case #3",
+			filename: func() string {
+				tmpDir := os.TempDir()
+				file, err := os.CreateTemp(tmpDir, "test*.json")
+				if err != nil {
+					return "test13640364134.json"
+				}
+				_ = file.Close()
+				return file.Name()
+			},
+			storage: &MemStorage{},
+			want:    `{"gauges":null,"counters":null}`,
+			wantErr: false,
+		},
+		{
+			name: "Positive case #4",
+			filename: func() string {
+				tmpDir := os.TempDir()
+				file, err := os.CreateTemp(tmpDir, "test*.json")
+				if err != nil {
+					return "test902904783.json"
+				}
+				_ = file.Close()
+				os.Remove(file.Name())
+				return file.Name()
+			},
+			storage: &MemStorage{},
+			want:    `{"gauges":null,"counters":null}`,
+			wantErr: false,
+		},
+		{
+			name: "Negative case #1",
+			filename: func() string {
+				return ""
+			},
+			want:    "",
+			storage: &MemStorage{},
+			wantErr: true,
+		},
+		{
+			name: "Negative case #2",
+			filename: func() string {
+				return "."
+			},
+			storage: &MemStorage{},
+			wantErr: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			filename := tc.filename()
+			defer os.Remove(filename)
+
+			tc.storage.Filename = filename
+			err := tc.storage.Save()
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			data, _ := os.ReadFile(filename)
+
+			assert.Equal(t, tc.want, strings.TrimRight(string(data), "\n"))
+		})
+	}
+}
+
+func TestMemStorage_Load(t *testing.T) {
+	testCases := []struct {
+		name     string
+		filename func() string
+		data     string
+		want     *MemStorage
+		wantErr  bool
+	}{
+		{
+			name: "Positive case #1",
+			filename: func() string {
+				tmpDir := os.TempDir()
+				file, err := os.CreateTemp(tmpDir, "test*.json")
+				if err != nil {
+					return "test712390123.json"
+				}
+				_ = file.Close()
+
+				return file.Name()
+			},
+			data: `{"gauges":{"a":{"name":"a","value":1.5}},"counters":{"b":{"name":"b","value":2}}}`,
+			want: &MemStorage{
+				gauges:   map[string]Gauge{"a": {"a", 1.5}},
+				counters: map[string]Counter{"b": {"b", 2}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Positive case #2",
+			filename: func() string {
+				tmpDir := os.TempDir()
+				file, err := os.CreateTemp(tmpDir, "test*.json")
+				if err != nil {
+					return "test6123612.json"
+				}
+				_ = file.Close()
+
+				return file.Name()
+			},
+			data: `{"gauges":null,"counters":null}`,
+			want: &MemStorage{
+				gauges:   map[string]Gauge(nil),
+				counters: map[string]Counter(nil),
+			},
+			wantErr: false,
+		},
+		{
+			name: "Positive case #3",
+			filename: func() string {
+				tmpDir := os.TempDir()
+				file, err := os.CreateTemp(tmpDir, "test*.json")
+				if err != nil {
+					return "test6123612.json"
+				}
+				_ = file.Close()
+
+				return file.Name()
+			},
+			data: `{"gauges":{},"counters":{}}`,
+			want: &MemStorage{
+				gauges:   map[string]Gauge{},
+				counters: map[string]Counter{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Positive case #4",
+			filename: func() string {
+				tmpDir := os.TempDir()
+				file, err := os.CreateTemp(tmpDir, "test*.json")
+				if err != nil {
+					return "test6109237.json"
+				}
+				_ = file.Close()
+
+				return file.Name()
+			},
+			data: "",
+			want: &MemStorage{
+				gauges:   map[string]Gauge{},
+				counters: map[string]Counter{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Negative case #1",
+			filename: func() string {
+				return ""
+			},
+			want: &MemStorage{
+				gauges:   map[string]Gauge{},
+				counters: map[string]Counter{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Negative case #2",
+			filename: func() string {
+				return "."
+			},
+			want: &MemStorage{
+				gauges:   map[string]Gauge{},
+				counters: map[string]Counter{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Negative case #3",
+			filename: func() string {
+				return "."
+			},
+			data: `{"gauges":{}`,
+			want: &MemStorage{
+				gauges:   map[string]Gauge{},
+				counters: map[string]Counter{},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			filename := tc.filename()
+			tc.want.Filename = filename
+			defer os.Remove(filename)
+
+			if filename != "" && tc.data != "" {
+				_ = os.WriteFile(filename, []byte(tc.data), 0664)
+			}
+
+			storage := NewMemStorage()
+			storage.Filename = filename
+
+			err := storage.Load()
+			if tc.wantErr {
+				require.Error(t, err)
+			} else if err != nil {
+				assert.ErrorIs(t, err, io.EOF)
+			} else {
+				require.NoError(t, err)
+			}
+
+			assert.EqualValues(t, tc.want, storage)
 		})
 	}
 }
