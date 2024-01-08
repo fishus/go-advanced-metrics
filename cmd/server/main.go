@@ -24,12 +24,22 @@ func main() {
 		panic(err)
 	}
 	defer logger.Log.Sync()
+
 	loadMetricsFromFile()
 	go saveMetricsAtIntervals()
 	runServer()
 }
 
 func runServer() {
+	if config.storeInterval == 0 {
+		handlers.Config.IsSyncMetricsSave = true
+	} else {
+		handlers.Config.IsSyncMetricsSave = false
+	}
+
+	st := handlers.Storage()
+	st.Filename = config.fileStoragePath
+
 	server := &http.Server{Addr: config.serverAddr, Handler: handlers.ServerRouter()}
 
 	go saveMetricsOnExit(server)
