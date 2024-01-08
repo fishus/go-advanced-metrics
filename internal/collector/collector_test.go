@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
@@ -99,10 +100,10 @@ func TestSetMetricGauge(t *testing.T) {
 			data := tc.data()
 			err := setMetricGauge(data, tc.key, tc.value)
 			if tc.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
+				require.Error(t, err)
+				return
 			}
+			require.NoError(t, err)
 			assert.Equal(t, tc.want(), data)
 		})
 	}
@@ -199,10 +200,10 @@ func TestAddMetricCounter(t *testing.T) {
 			data := tc.data()
 			err := addMetricCounter(data, tc.key, tc.value)
 			if tc.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
+				require.Error(t, err)
+				return
 			}
+			require.NoError(t, err)
 			assert.Equal(t, tc.want(), data)
 		})
 	}

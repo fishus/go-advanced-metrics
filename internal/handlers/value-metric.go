@@ -7,16 +7,14 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 
+	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
-func ValueHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, fmt.Sprintf(`%s method not allowed`, r.Method), http.StatusMethodNotAllowed)
-		return
-	}
-
+// ValueMetricHandler returns metrics data
+func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 	var metricType, metricName string
 
 	metricType = chi.URLParam(r, "metricType")
@@ -36,7 +34,7 @@ func ValueHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch metricType {
 	case metrics.TypeCounter:
-		metricValue, ok := storage.Counter(metricName)
+		Counter, ok := storage.Counter(metricName)
 		if !ok {
 			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
 			http.Error(w, fmt.Sprintf(`Counter '%s' not found`, metricName), http.StatusNotFound)
@@ -45,13 +43,13 @@ func ValueHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusOK)
 
-		_, err := io.WriteString(w, strconv.FormatInt(int64(metricValue), 10))
+		_, err := io.WriteString(w, strconv.FormatInt(Counter.Value, 10))
 		if err != nil {
-			panic(err)
+			logger.Log.Error(err.Error(), zap.String("event", "value metric handler"), zap.Int64("value", Counter.Value))
 		}
 
 	case metrics.TypeGauge:
-		metricValue, ok := storage.Gauge(metricName)
+		Gauge, ok := storage.Gauge(metricName)
 		if !ok {
 			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
 			http.Error(w, fmt.Sprintf(`Gauge '%s' not found`, metricName), http.StatusNotFound)
@@ -60,9 +58,9 @@ func ValueHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusOK)
 
-		_, err := io.WriteString(w, strconv.FormatFloat(float64(metricValue), 'f', -1, 64))
+		_, err := io.WriteString(w, strconv.FormatFloat(Gauge.Value, 'f', -1, 64))
 		if err != nil {
-			panic(err)
+			logger.Log.Error(err.Error(), zap.String("event", "value metric handler"), zap.Float64("value", Gauge.Value))
 		}
 
 	default:
