@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"go.uber.org/zap"
@@ -26,10 +30,14 @@ func main() {
 }
 
 func runServer() {
+	server := &http.Server{Addr: config.serverAddr, Handler: handlers.ServerRouter()}
+
+	go saveMetricsOnExit(server)
+
 	logger.Log.Info("Running server", zap.String("address", config.serverAddr), zap.String("event", "start server"))
-	err := http.ListenAndServe(config.serverAddr, handlers.ServerRouter())
-	if err != nil {
-		logger.Log.Panic(err.Error(), zap.String("event", "start server"))
+	err := server.ListenAndServe()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.Log.Error(err.Error(), zap.String("event", "start server"))
 	}
 }
 
@@ -75,5 +83,31 @@ func saveMetricsAtIntervals() {
 			}
 		}
 		time.Sleep(1 * time.Second)
+	}
+}
+
+func saveMetricsOnExit(server *http.Server) {
+	termSig := make(chan os.Signal, 1)
+	signal.Notify(termSig, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
+
+	sig := <-termSig
+	logger.Log.Debug("Server interrupt signal caught", zap.String("event", "stop server"), zap.String("signal", sig.String()))
+
+	if config.fileStoragePath != "" {
+		s := handlers.Storage()
+		s.Filename = config.fileStoragePath
+		err := s.Save()
+		if !errors.Is(err, metrics.ErrEmptyFilename) {
+			if err != nil {
+				logger.Log.Error(err.Error(), zap.String("event", "save metrics into file"))
+			} else {
+				logger.Log.Debug("Metric values saved into file", zap.String("event", "save metrics into file"))
+			}
+		}
+	}
+
+	err := server.Shutdown(context.Background())
+	if err != nil {
+		logger.Log.Error(err.Error(), zap.String("event", "stop server"))
 	}
 }
