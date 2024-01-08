@@ -3,8 +3,8 @@ package metrics
 import "errors"
 
 type Counter struct {
-	Name  string
-	Value int64
+	Name  string `json:"name"`
+	Value int64  `json:"value"`
 }
 
 func NewCounter(name string, v int64) (*Counter, error) {

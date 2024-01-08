@@ -3,8 +3,8 @@ package metrics
 import "errors"
 
 type Gauge struct {
-	Name  string
-	Value float64
+	Name  string  `json:"name"`
+	Value float64 `json:"value"`
 }
 
 func NewGauge(name string, v float64) (*Gauge, error) {
