@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -84,6 +85,18 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, `Incorrect metric type`, http.StatusBadRequest)
 		logger.Log.Debug(`Incorrect metric type`, zap.String("type", metric.MType))
 		return
+	}
+
+	// Save metrics values into a file
+	if Config.IsSyncMetricsSave {
+		err := storage.Save()
+		if !errors.Is(err, metrics.ErrEmptyFilename) {
+			if err != nil {
+				logger.Log.Error(err.Error(), zap.String("event", "save metrics into file"))
+			} else {
+				logger.Log.Debug("Metric values saved into file", zap.String("event", "save metrics into file"))
+			}
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

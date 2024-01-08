@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 
+	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
@@ -68,6 +71,18 @@ func UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
 		http.Error(w, `Incorrect metric type`, http.StatusBadRequest)
 		return
+	}
+
+	// Save metrics values into a file
+	if Config.IsSyncMetricsSave {
+		err := storage.Save()
+		if !errors.Is(err, metrics.ErrEmptyFilename) {
+			if err != nil {
+				logger.Log.Error(err.Error(), zap.String("event", "save metrics into file"))
+			} else {
+				logger.Log.Debug("Metric values saved into file", zap.String("event", "save metrics into file"))
+			}
+		}
 	}
 
 	// При успешном приёме возвращать http.StatusOK.
