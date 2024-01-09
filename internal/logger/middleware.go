@@ -2,7 +2,6 @@ package logger
 
 import (
 	"fmt"
-	"go.uber.org/zap"
 	"net/http"
 	"time"
 
@@ -40,14 +39,14 @@ func (l *LogEntry) Write(status, bytes int, header http.Header, duration time.Du
 
 	Log.Info(
 		"handle request",
-		zap.String("event", "handle request"),
-		zap.String("requestID", reqID),                // ID запроса
-		zap.Strings("headers", headers),               // Заголовки
-		zap.String("path", l.request.RequestURI),      // URI
-		zap.String("method", l.request.Method),        // Метод запроса
-		zap.Int64("latency", duration.Milliseconds()), // Время, затраченное на выполнение запроса (ms)
-		zap.Int("status", status),                     // Код статуса ответа
-		zap.Int("bytes", bytes),                       // Размер содержимого ответа (в байтах)
+		String("event", "handle request"),
+		String("requestID", reqID),                // ID запроса
+		Strings("headers", headers),               // Заголовки
+		String("path", l.request.RequestURI),      // URI
+		String("method", l.request.Method),        // Метод запроса
+		Int64("latency", duration.Milliseconds()), // Время, затраченное на выполнение запроса (ms)
+		Int("status", status),                     // Код статуса ответа
+		Int("bytes", bytes),                       // Размер содержимого ответа (в байтах)
 	)
 }
 

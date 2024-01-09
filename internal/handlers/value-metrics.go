@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"go.uber.org/zap"
-
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
@@ -26,7 +24,7 @@ func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 		JSONError(w, err.Error(), http.StatusBadRequest)
-		logger.Log.Debug(err.Error(), zap.Any("body", r.Body))
+		logger.Log.Debug(err.Error(), logger.Any("body", r.Body))
 		return
 	}
 
@@ -50,7 +48,7 @@ func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
 			JSONError(w, fmt.Sprintf(`Counter '%s' not found`, metric.ID), http.StatusNotFound)
-			logger.Log.Debug(fmt.Sprintf(`Counter '%s' not found`, metric.ID), zap.Any("metric", metric))
+			logger.Log.Debug(fmt.Sprintf(`Counter '%s' not found`, metric.ID), logger.Any("metric", metric))
 			return
 		}
 		metric.Delta = new(int64)
@@ -61,7 +59,7 @@ func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
 			JSONError(w, fmt.Sprintf(`Gauge '%s' not found`, metric.ID), http.StatusNotFound)
-			logger.Log.Debug(fmt.Sprintf(`Gauge '%s' not found`, metric.ID), zap.Any("metric", metric))
+			logger.Log.Debug(fmt.Sprintf(`Gauge '%s' not found`, metric.ID), logger.Any("metric", metric))
 			return
 		}
 		metric.Value = new(float64)
@@ -70,7 +68,7 @@ func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
 		JSONError(w, `Incorrect metric type`, http.StatusBadRequest)
-		logger.Log.Debug(`Incorrect metric type`, zap.String("type", metric.MType))
+		logger.Log.Debug(`Incorrect metric type`, logger.String("type", metric.MType))
 		return
 	}
 
@@ -78,7 +76,7 @@ func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(metric); err != nil {
-		logger.Log.Debug(err.Error(), zap.Any("data", metric))
+		logger.Log.Debug(err.Error(), logger.Any("data", metric))
 		return
 	}
 }

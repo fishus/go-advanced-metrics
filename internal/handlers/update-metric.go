@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
 
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
@@ -78,9 +77,9 @@ func UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		err := storage.Save()
 		if !errors.Is(err, metrics.ErrEmptyFilename) {
 			if err != nil {
-				logger.Log.Error(err.Error(), zap.String("event", "save metrics into file"))
+				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
 			} else {
-				logger.Log.Debug("Metric values saved into file", zap.String("event", "save metrics into file"))
+				logger.Log.Debug("Metric values saved into file", logger.String("event", "save metrics into file"))
 			}
 		}
 	}

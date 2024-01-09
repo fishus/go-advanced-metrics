@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"go.uber.org/zap"
 
 	"github.com/fishus/go-advanced-metrics/internal/collector"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
@@ -33,7 +32,7 @@ func collectAndSendMetrics() {
 	ms := &runtime.MemStats{}
 
 	client := resty.New().SetBaseURL("http://" + config.serverAddr)
-	logger.Log.Info("Running agent", zap.String("address", config.serverAddr), zap.String("event", "start agent"))
+	logger.Log.Info("Running agent", logger.String("address", config.serverAddr), logger.String("event", "start agent"))
 
 	gz, err := gzip.NewWriterLevel(nil, gzip.BestCompression)
 	if err != nil {
@@ -99,8 +98,8 @@ func postUpdateMetrics(client *resty.Client, gz *gzip.Writer, mtype, name string
 	jsonBody, err := json.Marshal(metric)
 	if err != nil {
 		logger.Log.Error(err.Error(),
-			zap.String("event", "encode json"),
-			zap.Any("data", metric))
+			logger.String("event", "encode json"),
+			logger.Any("data", metric))
 		return err
 	}
 
@@ -109,22 +108,22 @@ func postUpdateMetrics(client *resty.Client, gz *gzip.Writer, mtype, name string
 	_, err = gz.Write(jsonBody)
 	if err != nil {
 		logger.Log.Error(err.Error(),
-			zap.String("event", "compress request"),
-			zap.ByteString("body", jsonBody))
+			logger.String("event", "compress request"),
+			logger.ByteString("body", jsonBody))
 		return err
 	}
 	err = gz.Close()
 	if err != nil {
 		logger.Log.Error(err.Error(),
-			zap.String("event", "compress request"),
-			zap.ByteString("body", jsonBody))
+			logger.String("event", "compress request"),
+			logger.ByteString("body", jsonBody))
 		return err
 	}
 
 	logger.Log.Debug(`Send POST /update/ request`,
-		zap.String("event", "send request"),
-		zap.String("addr", config.serverAddr),
-		zap.ByteString("body", jsonBody))
+		logger.String("event", "send request"),
+		logger.String("addr", config.serverAddr),
+		logger.ByteString("body", jsonBody))
 
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json; charset=utf-8").
@@ -134,13 +133,13 @@ func postUpdateMetrics(client *resty.Client, gz *gzip.Writer, mtype, name string
 
 	if err != nil {
 		logger.Log.Error(err.Error(),
-			zap.String("event", "send request"),
-			zap.String("url", "http://"+config.serverAddr+"/update/"),
-			zap.ByteString("body", jsonBody))
+			logger.String("event", "send request"),
+			logger.String("url", "http://"+config.serverAddr+"/update/"),
+			logger.ByteString("body", jsonBody))
 		return err
 	}
 
-	logger.Log.Debug(`Received response from the server`, zap.String("event", "response received"), zap.Any("headers", resp.Header()), zap.Any("body", resp.Body()))
+	logger.Log.Debug(`Received response from the server`, logger.String("event", "response received"), logger.Any("headers", resp.Header()), logger.Any("body", resp.Body()))
 
 	return nil
 }

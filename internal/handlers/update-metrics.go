@@ -5,8 +5,6 @@ import (
 	"errors"
 	"net/http"
 
-	"go.uber.org/zap"
-
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
@@ -27,7 +25,7 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 		JSONError(w, err.Error(), http.StatusBadRequest)
-		logger.Log.Debug(err.Error(), zap.Any("body", r.Body))
+		logger.Log.Debug(err.Error(), logger.Any("body", r.Body))
 		return
 	}
 
@@ -49,14 +47,14 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	case metrics.TypeCounter:
 		if metric.Delta == nil {
 			JSONError(w, `Incorrect counter value`, http.StatusBadRequest)
-			logger.Log.Debug(`Incorrect counter value`, zap.Any("metric", metric))
+			logger.Log.Debug(`Incorrect counter value`, logger.Any("metric", metric))
 			return
 		}
 
 		err := storage.AddCounter(metric.ID, *metric.Delta)
 		if err != nil {
 			JSONError(w, err.Error(), http.StatusBadRequest)
-			logger.Log.Debug(err.Error(), zap.Any("metric", metric))
+			logger.Log.Debug(err.Error(), logger.Any("metric", metric))
 			return
 		}
 		counterValue, _ := storage.CounterValue(metric.ID)
@@ -66,14 +64,14 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	case metrics.TypeGauge:
 		if metric.Value == nil {
 			JSONError(w, `Incorrect gauge value`, http.StatusBadRequest)
-			logger.Log.Debug(`Incorrect gauge value`, zap.Any("metric", metric))
+			logger.Log.Debug(`Incorrect gauge value`, logger.Any("metric", metric))
 			return
 		}
 
 		err := storage.SetGauge(metric.ID, *metric.Value)
 		if err != nil {
 			JSONError(w, err.Error(), http.StatusBadRequest)
-			logger.Log.Debug(err.Error(), zap.Any("metric", metric))
+			logger.Log.Debug(err.Error(), logger.Any("metric", metric))
 			return
 		}
 		gaugeValue, _ := storage.GaugeValue(metric.ID)
@@ -83,7 +81,7 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
 		JSONError(w, `Incorrect metric type`, http.StatusBadRequest)
-		logger.Log.Debug(`Incorrect metric type`, zap.String("type", metric.MType))
+		logger.Log.Debug(`Incorrect metric type`, logger.String("type", metric.MType))
 		return
 	}
 
@@ -92,9 +90,9 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		err := storage.Save()
 		if !errors.Is(err, metrics.ErrEmptyFilename) {
 			if err != nil {
-				logger.Log.Error(err.Error(), zap.String("event", "save metrics into file"))
+				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
 			} else {
-				logger.Log.Debug("Metric values saved into file", zap.String("event", "save metrics into file"))
+				logger.Log.Debug("Metric values saved into file", logger.String("event", "save metrics into file"))
 			}
 		}
 	}
@@ -103,7 +101,7 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(metric); err != nil {
-		logger.Log.Debug(err.Error(), zap.Any("data", metric))
+		logger.Log.Debug(err.Error(), logger.Any("data", metric))
 		return
 	}
 }

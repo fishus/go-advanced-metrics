@@ -9,8 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/fishus/go-advanced-metrics/internal/handlers"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
@@ -44,10 +42,10 @@ func runServer() {
 
 	go saveMetricsOnExit(server)
 
-	logger.Log.Info("Running server", zap.String("address", config.serverAddr), zap.String("event", "start server"))
+	logger.Log.Info("Running server", logger.String("address", config.serverAddr), logger.String("event", "start server"))
 	err := server.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Log.Error(err.Error(), zap.String("event", "start server"))
+		logger.Log.Error(err.Error(), logger.String("event", "start server"))
 	}
 }
 
@@ -62,10 +60,10 @@ func loadMetricsFromFile() {
 	err := s.Load()
 	if !errors.Is(err, metrics.ErrEmptyFilename) {
 		if err != nil {
-			logger.Log.Warn(err.Error(), zap.String("event", "load metrics from file"))
+			logger.Log.Warn(err.Error(), logger.String("event", "load metrics from file"))
 			return
 		}
-		logger.Log.Debug("Metric values loaded from file", zap.String("event", "load metrics from file"))
+		logger.Log.Debug("Metric values loaded from file", logger.String("event", "load metrics from file"))
 	}
 }
 
@@ -86,9 +84,9 @@ func saveMetricsAtIntervals() {
 			err := s.Save()
 			if !errors.Is(err, metrics.ErrEmptyFilename) {
 				if err != nil {
-					logger.Log.Error(err.Error(), zap.String("event", "save metrics into file"))
+					logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
 				} else {
-					logger.Log.Debug("Metric values saved into file", zap.String("event", "save metrics into file"))
+					logger.Log.Debug("Metric values saved into file", logger.String("event", "save metrics into file"))
 				}
 			}
 		}
@@ -101,7 +99,7 @@ func saveMetricsOnExit(server *http.Server) {
 	signal.Notify(termSig, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
 	sig := <-termSig
-	logger.Log.Debug("Server interrupt signal caught", zap.String("event", "stop server"), zap.String("signal", sig.String()))
+	logger.Log.Debug("Server interrupt signal caught", logger.String("event", "stop server"), logger.String("signal", sig.String()))
 
 	if config.fileStoragePath != "" {
 		s := handlers.Storage()
@@ -109,15 +107,15 @@ func saveMetricsOnExit(server *http.Server) {
 		err := s.Save()
 		if !errors.Is(err, metrics.ErrEmptyFilename) {
 			if err != nil {
-				logger.Log.Error(err.Error(), zap.String("event", "save metrics into file"))
+				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
 			} else {
-				logger.Log.Debug("Metric values saved into file", zap.String("event", "save metrics into file"))
+				logger.Log.Debug("Metric values saved into file", logger.String("event", "save metrics into file"))
 			}
 		}
 	}
 
 	err := server.Shutdown(context.Background())
 	if err != nil {
-		logger.Log.Error(err.Error(), zap.String("event", "stop server"))
+		logger.Log.Error(err.Error(), logger.String("event", "stop server"))
 	}
 }

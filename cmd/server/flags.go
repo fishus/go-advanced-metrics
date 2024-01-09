@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/caarlos0/env/v10"
-	"go.uber.org/zap"
 
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 )
@@ -53,7 +52,7 @@ func parseEnvs(config Config) Config {
 	}
 	err := env.Parse(&cfg)
 	if err != nil {
-		logger.Log.Panic(err.Error(), zap.String("event", "parse env"), zap.Strings("data", os.Environ()))
+		logger.Log.Panic(err.Error(), logger.String("event", "parse env"), logger.Strings("data", os.Environ()))
 	}
 
 	if _, exists := os.LookupEnv("ADDRESS"); exists {
