@@ -2,8 +2,11 @@ package main
 
 import (
 	"flag"
-	"github.com/caarlos0/env/v10"
 	"os"
+
+	"github.com/caarlos0/env/v10"
+
+	"github.com/fishus/go-advanced-metrics/internal/logger"
 )
 
 func loadConfig() Config {
@@ -42,18 +45,16 @@ func parseEnvs(config Config) Config {
 	}
 	err := env.Parse(&cfg)
 	if err != nil {
-		panic(err)
+		logger.Log.Panic(err.Error(), logger.String("event", "parse env"), logger.Strings("data", os.Environ()))
 	}
 
-	if cfg.ServerAddr != "" {
+	if _, exists := os.LookupEnv("ADDRESS"); exists {
 		config = config.SetServerAddr(cfg.ServerAddr)
 	}
-
-	if cfg.PollInterval != 0 {
+	if _, exists := os.LookupEnv("POLL_INTERVAL"); exists {
 		config = config.SetPollIntervalInSeconds(cfg.PollInterval)
 	}
-
-	if cfg.ReportInterval != 0 {
+	if _, exists := os.LookupEnv("REPORT_INTERVAL"); exists {
 		config = config.SetReportIntervalInSeconds(cfg.ReportInterval)
 	}
 

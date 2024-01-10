@@ -2,4 +2,14 @@ package handlers
 
 import "github.com/fishus/go-advanced-metrics/internal/metrics"
 
-var storage metrics.Repositories = metrics.NewMemStorage()
+type config struct {
+	IsSyncMetricsSave bool
+}
+
+var Config = config{}
+
+var storage = metrics.NewMemStorage()
+
+func Storage() *metrics.MemStorage {
+	return storage
+}

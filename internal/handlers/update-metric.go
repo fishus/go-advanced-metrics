@@ -1,23 +1,19 @@
 package handlers
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
-// UpdateHandler processes a request like POST /update/{metricType}/{metricName}/{metricValue}
+// UpdateMetricHandler processes a request like POST /update/{metricType}/{metricName}/{metricValue}
 // Stores metric data by type and name
-func UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, fmt.Sprintf(`%s method not allowed`, r.Method), http.StatusMethodNotAllowed)
-		return
-	}
-
+func UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	var metricType, metricName string
 
 	metricType = chi.URLParam(r, "metricType")
@@ -74,6 +70,18 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
 		http.Error(w, `Incorrect metric type`, http.StatusBadRequest)
 		return
+	}
+
+	// Save metrics values into a file
+	if Config.IsSyncMetricsSave {
+		err := storage.Save()
+		if !errors.Is(err, metrics.ErrEmptyFilename) {
+			if err != nil {
+				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
+			} else {
+				logger.Log.Debug("Metric values saved into file", logger.String("event", "save metrics into file"))
+			}
+		}
 	}
 
 	// При успешном приёме возвращать http.StatusOK.

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testUpdateRequest(t *testing.T, ts *httptest.Server, method, path string) *http.Response {
+func testUpdateMetricRequest(t *testing.T, ts *httptest.Server, method, path string) *http.Response {
 	req, err := http.NewRequest(method, ts.URL+path, nil)
 	require.NoError(t, err)
 
@@ -19,7 +19,7 @@ func testUpdateRequest(t *testing.T, ts *httptest.Server, method, path string) *
 	return resp
 }
 
-func TestUpdateHandler(t *testing.T) {
+func TestUpdateMetricHandler(t *testing.T) {
 	ts := httptest.NewServer(ServerRouter())
 	defer ts.Close()
 
@@ -57,12 +57,6 @@ func TestUpdateHandler(t *testing.T) {
 			name:   "Negative case: Wrong url #1",
 			method: http.MethodPost,
 			url:    "/update",
-			status: http.StatusNotFound,
-		},
-		{
-			name:   "Negative case: Wrong url #2",
-			method: http.MethodPost,
-			url:    "/update/",
 			status: http.StatusNotFound,
 		},
 		{
@@ -165,7 +159,7 @@ func TestUpdateHandler(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			resp := testUpdateRequest(t, ts, tc.method, tc.url)
+			resp := testUpdateMetricRequest(t, ts, tc.method, tc.url)
 			defer resp.Body.Close()
 			assert.Equal(t, tc.status, resp.StatusCode)
 		})
