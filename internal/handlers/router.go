@@ -23,5 +23,6 @@ func ServerRouter() chi.Router {
 	r.Post("/value/", ValueMetricsHandler)
 	r.Get("/value/{metricType}/{metricName}", ValueMetricHandler)
 	r.Get("/", ListHandler)
+	r.Get("/ping", PingDBHandler)
 	return r
 }
