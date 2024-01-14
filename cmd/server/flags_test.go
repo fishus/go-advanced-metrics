@@ -29,6 +29,7 @@ func (suite *FlagsTestSuite) SetupSuite() {
 		"STORE_INTERVAL",
 		"FILE_STORAGE_PATH",
 		"RESTORE",
+		"DATABASE_DSN",
 	} {
 		suite.osEnviron[e] = os.Getenv(e)
 	}
@@ -75,6 +76,7 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 				"storeInterval":   300 * time.Second,
 				"fileStoragePath": "/tmp/metrics-db.json",
 				"isReqRestore":    true,
+				"databaseDSN":     "",
 			},
 		},
 		{
@@ -101,6 +103,11 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 			name: "Positive case #5B",
 			args: []string{"-r=false"},
 			want: map[string]interface{}{"isReqRestore": false},
+		},
+		{
+			name: "Positive case #6",
+			args: []string{"-d=postgres://username:password@localhost:5432/database_name"},
+			want: map[string]interface{}{"databaseDSN": "postgres://username:password@localhost:5432/database_name"},
 		},
 	}
 
@@ -163,6 +170,11 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 			name: "Positive case #5B",
 			envs: []string{"RESTORE=false"},
 			want: map[string]interface{}{"isReqRestore": false},
+		},
+		{
+			name: "Positive case #6",
+			envs: []string{"DATABASE_DSN=postgres://username:password@localhost:5432/database_name"},
+			want: map[string]interface{}{"databaseDSN": "postgres://username:password@localhost:5432/database_name"},
 		},
 	}
 
@@ -304,6 +316,27 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 			args: nil,
 			envs: []string{"RESTORE=false"},
 			want: map[string]interface{}{"isReqRestore": false},
+		},
+		{
+			name: "Positive case #6",
+		},
+		{
+			name: "Positive case #6A",
+			args: []string{"-d=postgres://username1:password1@localhost:5432/database_name1"},
+			envs: []string{"DATABASE_DSN=postgres://username2:password2@localhost:5432/database_name2"},
+			want: map[string]interface{}{"databaseDSN": "postgres://username2:password2@localhost:5432/database_name2"},
+		},
+		{
+			name: "Positive case #6B",
+			args: []string{"-d=postgres://username1:password1@localhost:5432/database_name1"},
+			envs: nil,
+			want: map[string]interface{}{"databaseDSN": "postgres://username1:password1@localhost:5432/database_name1"},
+		},
+		{
+			name: "Positive case #6C",
+			args: nil,
+			envs: []string{"DATABASE_DSN=postgres://username2:password2@localhost:5432/database_name2"},
+			want: map[string]interface{}{"databaseDSN": "postgres://username2:password2@localhost:5432/database_name2"},
 		},
 	}
 

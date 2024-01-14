@@ -34,13 +34,17 @@ func parseFlags(config Config) Config {
 	// Флаг -r=true/false - загружать или нет ранее сохранённые значения из указанного файла при старте сервера (по умолчанию true).
 	isReqRestore := flag.Bool("r", true, "it is required to load previously saved values from the file when the server starts")
 
+	// Флаг -d=<ЗНАЧЕНИЕ> - строка подключения к БД
+	databaseDSN := flag.String("d", "", "database URL")
+
 	flag.Parse()
 
 	return config.
 		SetServerAddr(*serverAddr).
 		SetStoreIntervalInSeconds(*storeInterval).
 		SetFileStoragePath(*fileStoragePath).
-		SetIsReqRestore(*isReqRestore)
+		SetIsReqRestore(*isReqRestore).
+		SetDatabaseDSN(*databaseDSN)
 }
 
 func parseEnvs(config Config) Config {
@@ -49,6 +53,7 @@ func parseEnvs(config Config) Config {
 		StoreInterval   uint   `env:"STORE_INTERVAL"`
 		FileStoragePath string `env:"FILE_STORAGE_PATH"`
 		IsReqRestore    bool   `env:"RESTORE"`
+		DatabaseDSN     string `env:"DATABASE_DSN"`
 	}
 	err := env.Parse(&cfg)
 	if err != nil {
@@ -69,6 +74,10 @@ func parseEnvs(config Config) Config {
 
 	if _, exists := os.LookupEnv("RESTORE"); exists {
 		config = config.SetIsReqRestore(cfg.IsReqRestore)
+	}
+
+	if _, exists := os.LookupEnv("DATABASE_DSN"); exists {
+		config = config.SetDatabaseDSN(cfg.DatabaseDSN)
 	}
 
 	return config

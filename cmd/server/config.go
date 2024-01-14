@@ -7,6 +7,7 @@ type Config struct {
 	storeInterval   time.Duration // Периодичность, с которой текущие показания сервера сохраняются на диск (в секундах)
 	fileStoragePath string        // Полное имя файла, куда сохраняются текущие значения
 	isReqRestore    bool          // Загружать ранее сохранённые значения из файла при старте сервера
+	databaseDSN     string        // Строка подключения к БД
 	logLevel        string
 }
 
@@ -52,5 +53,14 @@ func (c Config) IsReqRestore() bool {
 
 func (c Config) SetIsReqRestore(restore bool) Config {
 	c.isReqRestore = restore
+	return c
+}
+
+func (c Config) DatabaseDSN() string {
+	return c.databaseDSN
+}
+
+func (c Config) SetDatabaseDSN(dsn string) Config {
+	c.databaseDSN = dsn
 	return c
 }
