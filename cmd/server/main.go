@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	db "github.com/fishus/go-advanced-metrics/internal/database"
 	"github.com/fishus/go-advanced-metrics/internal/handlers"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
@@ -22,6 +23,11 @@ func main() {
 		panic(err)
 	}
 	defer logger.Log.Sync()
+
+	ctxDBTimeout, cancelDBTimeout := context.WithTimeout(context.Background(), (3 * time.Second))
+	defer cancelDBTimeout()
+	dbPool := db.Open(ctxDBTimeout, config.databaseDSN)
+	defer dbPool.Close()
 
 	loadMetricsFromFile()
 	go saveMetricsAtIntervals()
