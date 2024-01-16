@@ -30,8 +30,8 @@ func (m *MemStorage) Gauge(name string) (metrics.Gauge, bool) {
 
 // GaugeValue returns the gauge metric value by name
 func (m *MemStorage) GaugeValue(name string) (float64, bool) {
-	if v, ok := m.gauges[name]; ok {
-		return v.Value(), ok
+	if gauge, ok := m.gauges[name]; ok {
+		return gauge.Value(), ok
 	}
 	return 0, false
 }

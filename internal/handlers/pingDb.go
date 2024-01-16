@@ -9,9 +9,9 @@ import (
 )
 
 func PingDBHandler(w http.ResponseWriter, r *http.Request) {
-	dbPool := db.Pool()
-	if dbPool == nil {
-		http.Error(w, "Database connection not established", http.StatusInternalServerError)
+	dbPool, err := db.Pool()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 

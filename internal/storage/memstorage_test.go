@@ -230,7 +230,7 @@ func TestMemStorage_SetGauge(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:   "Positive case #3",
+			name:   "Positive case #4",
 			key:    "b",
 			value:  3.0,
 			gauges: []gauge{{"a", 1.0}},

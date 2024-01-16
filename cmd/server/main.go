@@ -41,6 +41,12 @@ func main() {
 func setStorage() {
 	handlers.Config.IsSyncMetricsSave = false
 
+	dbConn, err := db.Pool()
+	if err == nil {
+		handlers.SetStorage(storage.NewDBStorage(dbConn))
+		return
+	}
+
 	if config.fileStoragePath != "" {
 		if config.storeInterval == 0 {
 			handlers.Config.IsSyncMetricsSave = true
