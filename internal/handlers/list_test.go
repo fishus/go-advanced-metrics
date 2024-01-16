@@ -10,7 +10,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/fishus/go-advanced-metrics/internal/metrics"
+	store "github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
 type ListHandlerSuite struct {
@@ -35,7 +35,7 @@ func (s *ListHandlerSuite) TearDownSuite() {
 }
 
 func (s *ListHandlerSuite) SetupTest() {
-	storage = metrics.NewMemStorage()
+	storage = store.NewMemStorage()
 }
 
 func (s *ListHandlerSuite) requestValue() *resty.Response {

@@ -10,6 +10,10 @@ import (
 
 func PingDBHandler(w http.ResponseWriter, r *http.Request) {
 	dbPool := db.Pool()
+	if dbPool == nil {
+		http.Error(w, "Database connection not established", http.StatusInternalServerError)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), (3 * time.Second))
 	defer cancel()

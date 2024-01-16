@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
+	store "github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
 // UpdateMetricHandler processes a request like POST /update/{metricType}/{metricName}/{metricValue}
@@ -73,9 +75,9 @@ func UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save metrics values into a file
-	if Config.IsSyncMetricsSave {
-		err := storage.Save()
-		if !errors.Is(err, metrics.ErrEmptyFilename) {
+	if Config.IsSyncMetricsSave && fmt.Sprintf("%T", storage) == "*store.FileStorage" {
+		err := storage.(*store.FileStorage).Save()
+		if !errors.Is(err, store.ErrEmptyFilename) {
 			if err != nil {
 				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
 			} else {

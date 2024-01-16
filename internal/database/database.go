@@ -2,13 +2,15 @@ package database
 
 import (
 	"context"
-
+	
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 )
 
-var pool *pgxpool.Pool
+type ConnPool = pgxpool.Pool
+
+var pool *ConnPool
 
 // Open connect to database (Postgres)
 // Don't forget to call defer dbpool.Close()

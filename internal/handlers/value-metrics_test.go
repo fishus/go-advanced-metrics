@@ -8,7 +8,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/fishus/go-advanced-metrics/internal/metrics"
+	store "github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
 type ValueMetricsHandlerSuite struct {
@@ -27,7 +27,7 @@ func (s *ValueMetricsHandlerSuite) TearDownSuite() {
 }
 
 func (s *ValueMetricsHandlerSuite) SetupSubTest() {
-	storage = metrics.NewMemStorage()
+	storage = store.NewMemStorage()
 	_ = storage.AddCounter("a", 5)
 	_ = storage.SetGauge("a", 1.5)
 }

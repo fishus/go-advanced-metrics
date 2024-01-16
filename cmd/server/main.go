@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,7 +13,7 @@ import (
 	db "github.com/fishus/go-advanced-metrics/internal/database"
 	"github.com/fishus/go-advanced-metrics/internal/handlers"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
-	"github.com/fishus/go-advanced-metrics/internal/metrics"
+	"github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
 var config Config
@@ -24,26 +25,34 @@ func main() {
 	}
 	defer logger.Log.Sync()
 
-	ctxDBTimeout, cancelDBTimeout := context.WithTimeout(context.Background(), (3 * time.Second))
-	defer cancelDBTimeout()
-	dbPool := db.Open(ctxDBTimeout, config.databaseDSN)
-	defer dbPool.Close()
+	if config.databaseDSN != "" {
+		ctxDBTimeout, cancelDBTimeout := context.WithTimeout(context.Background(), (3 * time.Second))
+		defer cancelDBTimeout()
+		dbPool := db.Open(ctxDBTimeout, config.databaseDSN)
+		defer dbPool.Close()
+	}
 
+	setStorage()
 	loadMetricsFromFile()
 	go saveMetricsAtIntervals()
 	runServer()
 }
 
-func runServer() {
-	if config.storeInterval == 0 {
-		handlers.Config.IsSyncMetricsSave = true
-	} else {
-		handlers.Config.IsSyncMetricsSave = false
+func setStorage() {
+	handlers.Config.IsSyncMetricsSave = false
+
+	if config.fileStoragePath != "" {
+		if config.storeInterval == 0 {
+			handlers.Config.IsSyncMetricsSave = true
+		}
+		handlers.SetStorage(storage.NewFileStorage(config.fileStoragePath))
+		return
 	}
 
-	st := handlers.Storage()
-	st.Filename = config.fileStoragePath
+	handlers.SetStorage(storage.NewMemStorage())
+}
 
+func runServer() {
 	server := &http.Server{Addr: config.serverAddr, Handler: handlers.ServerRouter()}
 
 	go saveMetricsOnExit(server)
@@ -56,15 +65,14 @@ func runServer() {
 }
 
 func loadMetricsFromFile() {
-	if !config.isReqRestore || config.fileStoragePath == "" {
+	if !config.isReqRestore || fmt.Sprintf("%T", handlers.Storage()) != "*storage.FileStorage" {
 		return
 	}
 
-	s := handlers.Storage()
-	s.Filename = config.fileStoragePath
+	s := handlers.Storage().(*storage.FileStorage)
 
 	err := s.Load()
-	if !errors.Is(err, metrics.ErrEmptyFilename) {
+	if !errors.Is(err, storage.ErrEmptyFilename) {
 		if err != nil {
 			logger.Log.Warn(err.Error(), logger.String("event", "load metrics from file"))
 			return
@@ -74,12 +82,11 @@ func loadMetricsFromFile() {
 }
 
 func saveMetricsAtIntervals() {
-	if config.storeInterval <= 0 || config.fileStoragePath == "" {
+	if config.storeInterval <= 0 || fmt.Sprintf("%T", handlers.Storage()) != "*storage.FileStorage" {
 		return
 	}
 
-	s := handlers.Storage()
-	s.Filename = config.fileStoragePath
+	s := handlers.Storage().(*storage.FileStorage)
 
 	now := time.Now()
 	storeAfter := now.Add(config.storeInterval)
@@ -88,7 +95,7 @@ func saveMetricsAtIntervals() {
 		if now.After(storeAfter) {
 			storeAfter = now.Add(config.storeInterval)
 			err := s.Save()
-			if !errors.Is(err, metrics.ErrEmptyFilename) {
+			if !errors.Is(err, storage.ErrEmptyFilename) {
 				if err != nil {
 					logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
 				} else {
@@ -107,11 +114,10 @@ func saveMetricsOnExit(server *http.Server) {
 	sig := <-termSig
 	logger.Log.Debug("Server interrupt signal caught", logger.String("event", "stop server"), logger.String("signal", sig.String()))
 
-	if config.fileStoragePath != "" {
-		s := handlers.Storage()
-		s.Filename = config.fileStoragePath
+	if fmt.Sprintf("%T", handlers.Storage()) == "*storage.FileStorage" {
+		s := handlers.Storage().(*storage.FileStorage)
 		err := s.Save()
-		if !errors.Is(err, metrics.ErrEmptyFilename) {
+		if !errors.Is(err, storage.ErrEmptyFilename) {
 			if err != nil {
 				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
 			} else {

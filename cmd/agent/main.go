@@ -12,6 +12,7 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/collector"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
+	"github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
 var config Config
@@ -27,7 +28,7 @@ func main() {
 
 func collectAndSendMetrics() {
 	// data contains a set of values for all metrics
-	data := metrics.NewMemStorage()
+	data := storage.NewMemStorage()
 
 	ms := &runtime.MemStats{}
 
@@ -66,7 +67,7 @@ func collectAndSendMetrics() {
 			}
 
 			// Reset metrics
-			data = metrics.NewMemStorage()
+			data = storage.NewMemStorage()
 		}
 
 		time.Sleep(1 * time.Second)

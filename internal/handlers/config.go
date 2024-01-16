@@ -1,15 +1,21 @@
 package handlers
 
-import "github.com/fishus/go-advanced-metrics/internal/metrics"
+import (
+	store "github.com/fishus/go-advanced-metrics/internal/storage"
+)
 
 type config struct {
-	IsSyncMetricsSave bool
+	IsSyncMetricsSave bool // Сохранять значения метрик синхронно в файл
 }
 
 var Config = config{}
 
-var storage = metrics.NewMemStorage()
+var storage store.MetricsStorager
 
-func Storage() *metrics.MemStorage {
+func Storage() store.MetricsStorager {
 	return storage
+}
+
+func SetStorage(s store.MetricsStorager) {
+	storage = s
 }
