@@ -43,7 +43,9 @@ func setStorage() {
 
 	dbConn, err := db.Pool()
 	if err == nil {
-		handlers.SetStorage(storage.NewDBStorage(dbConn))
+		dbStorage := storage.NewDBStorage(dbConn)
+		dbStorage.MigrateCreateSchema(context.Background())
+		handlers.SetStorage(dbStorage)
 		return
 	}
 

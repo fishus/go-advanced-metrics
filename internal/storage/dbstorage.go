@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	db "github.com/fishus/go-advanced-metrics/internal/database"
@@ -262,6 +263,29 @@ func (ds *DBStorage) AddCounterContext(ctx context.Context, name string, value i
 	}
 
 	return nil
+}
+
+// MigrateCreateSchema Создать все необходимые таблицы в базе данных.
+func (ds *DBStorage) MigrateCreateSchema(ctx context.Context) {
+	dump, err := os.ReadFile(`db/migration/create_schema.sql`)
+	if err != nil {
+		logger.Log.Warn(err.Error())
+		return
+	}
+
+	if ds.conn == nil {
+		logger.Log.Warn(db.ErrNotConnected.Error())
+		return
+	}
+
+	ctxQuery, cancel := context.WithTimeout(ctx, (30 * time.Second))
+	defer cancel()
+
+	res, err := ds.conn.Exec(ctxQuery, string(dump))
+	if err != nil {
+		logger.Log.Warn(err.Error(), logger.String("status", res.String()))
+		return
+	}
 }
 
 var _ MetricsStorager = (*DBStorage)(nil)
