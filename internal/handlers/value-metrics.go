@@ -13,14 +13,7 @@ import (
 func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	type Metrics struct {
-		ID    string   `json:"id"`              // имя метрики
-		MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-		Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-		Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
-	}
-
-	var metric Metrics
+	var metric metrics.Metrics
 
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 		JSONError(w, err.Error(), http.StatusBadRequest)

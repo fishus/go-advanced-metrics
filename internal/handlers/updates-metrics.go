@@ -16,14 +16,7 @@ import (
 func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	type Metric struct {
-		ID    string   `json:"id"`              // имя метрики
-		MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-		Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-		Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
-	}
-
-	var metricsBatch []Metric
+	var metricsBatch []metrics.Metrics
 
 	if err := json.NewDecoder(r.Body).Decode(&metricsBatch); err != nil {
 		JSONError(w, err.Error(), http.StatusBadRequest)
@@ -115,7 +108,7 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		counters := storage.Counters(store.FilterNames(cNames))
 		for _, cn := range cNames {
 			if c, ok := counters[cn]; ok {
-				metric := Metric{
+				metric := metrics.Metrics{
 					ID:    c.Name(),
 					MType: metrics.TypeCounter,
 					Delta: new(int64),
@@ -130,7 +123,7 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		gauges := storage.Gauges(store.FilterNames(gNames))
 		for _, gn := range gNames {
 			if g, ok := gauges[gn]; ok {
-				metric := Metric{
+				metric := metrics.Metrics{
 					ID:    g.Name(),
 					MType: metrics.TypeGauge,
 					Value: new(float64),
