@@ -12,15 +12,15 @@ import (
 )
 
 type DBStorage struct {
-	conn db.Connector
+	pool db.Connector
 }
 
-func NewDBStorage(conn db.Connector) *DBStorage {
-	return &DBStorage{conn: conn}
+func NewDBStorage(pool db.Connector) *DBStorage {
+	return &DBStorage{pool: pool}
 }
 
-func (ds *DBStorage) SetDBConn(conn db.Connector) {
-	ds.conn = conn
+func (ds *DBStorage) SetDBPool(pool db.Connector) {
+	ds.pool = pool
 }
 
 // Gauge returns the gauge metric by name
@@ -30,14 +30,14 @@ func (ds *DBStorage) Gauge(name string) (metrics.Gauge, bool) {
 
 // GaugeContext returns the gauge metric by name
 func (ds *DBStorage) GaugeContext(ctx context.Context, name string) (metrics.Gauge, bool) {
-	if ds.conn == nil {
+	if ds.pool == nil {
 		return metrics.Gauge{}, false
 	}
 
 	ctxQuery, cancel := context.WithTimeout(ctx, (3 * time.Second))
 	defer cancel()
 
-	row := ds.conn.QueryRow(ctxQuery, "SELECT value FROM metrics_gauge WHERE name = $1 LIMIT 1;", name)
+	row := ds.pool.QueryRow(ctxQuery, "SELECT value FROM metrics_gauge WHERE name = $1 LIMIT 1;", name)
 	var value float64
 	err := row.Scan(&value)
 	if errors.Is(err, db.ErrNoRows) {
@@ -71,22 +71,35 @@ func (ds *DBStorage) GaugeValueContext(ctx context.Context, name string) (float6
 }
 
 // Gauges returns all gauge metrics
-func (ds *DBStorage) Gauges() map[string]metrics.Gauge {
-	return ds.GaugesContext(context.Background())
+func (ds *DBStorage) Gauges(filters ...StorageFilter) map[string]metrics.Gauge {
+	return ds.GaugesContext(context.Background(), filters...)
 }
 
 // GaugesContext returns all gauge metrics
-func (ds *DBStorage) GaugesContext(ctx context.Context) map[string]metrics.Gauge {
+func (ds *DBStorage) GaugesContext(ctx context.Context, filters ...StorageFilter) map[string]metrics.Gauge {
 	gauges := map[string]metrics.Gauge{}
 
-	if ds.conn == nil {
+	if ds.pool == nil {
 		return gauges
+	}
+
+	f := &StorageFilters{}
+	for _, filter := range filters {
+		filter(f)
 	}
 
 	ctxQuery, cancel := context.WithTimeout(ctx, (3 * time.Second))
 	defer cancel()
 
-	rows, err := ds.conn.Query(ctxQuery, "SELECT name, value FROM metrics_gauge;")
+	var (
+		rows db.Rows
+		err  error
+	)
+	if len(f.names) > 0 {
+		rows, err = ds.pool.Query(ctxQuery, "SELECT name, value FROM metrics_gauge WHERE name = ANY($1);", f.names)
+	} else {
+		rows, err = ds.pool.Query(ctxQuery, "SELECT name, value FROM metrics_gauge;")
+	}
 	if err != nil {
 		logger.Log.Warn(err.Error())
 		return gauges
@@ -128,16 +141,20 @@ func (ds *DBStorage) SetGauge(name string, value float64) error {
 }
 
 func (ds *DBStorage) SetGaugeContext(ctx context.Context, name string, value float64) error {
-	if ds.conn == nil {
+	if ds.pool == nil {
 		return db.ErrNotConnected
+	}
+
+	if _, err := metrics.NewGauge(name, value); err != nil {
+		return err
 	}
 
 	ctxQuery, cancel := context.WithTimeout(ctx, (3 * time.Second))
 	defer cancel()
 
-	res, err := ds.conn.Exec(ctxQuery, "INSERT INTO metrics_gauge (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;", name, value)
+	_, err := ds.pool.Exec(ctxQuery, "INSERT INTO metrics_gauge (name, value) VALUES (@name, @value) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;",
+		db.NamedArgs{"name": name, "value": value})
 	if err != nil {
-		logger.Log.Warn(err.Error(), logger.String("status", res.String()))
 		return err
 	}
 
@@ -151,14 +168,14 @@ func (ds *DBStorage) Counter(name string) (metrics.Counter, bool) {
 
 // CounterContext returns the counter metric by name
 func (ds *DBStorage) CounterContext(ctx context.Context, name string) (metrics.Counter, bool) {
-	if ds.conn == nil {
+	if ds.pool == nil {
 		return metrics.Counter{}, false
 	}
 
 	ctxQuery, cancel := context.WithTimeout(ctx, (3 * time.Second))
 	defer cancel()
 
-	row := ds.conn.QueryRow(ctxQuery, "SELECT value FROM metrics_counter WHERE name = $1 LIMIT 1;", name)
+	row := ds.pool.QueryRow(ctxQuery, "SELECT value FROM metrics_counter WHERE name = $1 LIMIT 1;", name)
 	var value int64
 	err := row.Scan(&value)
 	if errors.Is(err, db.ErrNoRows) {
@@ -192,22 +209,35 @@ func (ds *DBStorage) CounterValueContext(ctx context.Context, name string) (int6
 }
 
 // Counters returns all counter metrics
-func (ds *DBStorage) Counters() map[string]metrics.Counter {
-	return ds.CountersContext(context.Background())
+func (ds *DBStorage) Counters(filters ...StorageFilter) map[string]metrics.Counter {
+	return ds.CountersContext(context.Background(), filters...)
 }
 
 // CountersContext returns all counter metrics
-func (ds *DBStorage) CountersContext(ctx context.Context) map[string]metrics.Counter {
+func (ds *DBStorage) CountersContext(ctx context.Context, filters ...StorageFilter) map[string]metrics.Counter {
 	counters := map[string]metrics.Counter{}
 
-	if ds.conn == nil {
+	if ds.pool == nil {
 		return counters
+	}
+
+	f := &StorageFilters{}
+	for _, filter := range filters {
+		filter(f)
 	}
 
 	ctxQuery, cancel := context.WithTimeout(ctx, (3 * time.Second))
 	defer cancel()
 
-	rows, err := ds.conn.Query(ctxQuery, "SELECT name, value FROM metrics_counter;")
+	var (
+		rows db.Rows
+		err  error
+	)
+	if len(f.names) > 0 {
+		rows, err = ds.pool.Query(ctxQuery, "SELECT name, value FROM metrics_counter WHERE name = ANY($1);", f.names)
+	} else {
+		rows, err = ds.pool.Query(ctxQuery, "SELECT name, value FROM metrics_counter;")
+	}
 	if err != nil {
 		logger.Log.Warn(err.Error())
 		return counters
@@ -249,16 +279,20 @@ func (ds *DBStorage) AddCounter(name string, value int64) error {
 }
 
 func (ds *DBStorage) AddCounterContext(ctx context.Context, name string, value int64) error {
-	if ds.conn == nil {
+	if ds.pool == nil {
 		return db.ErrNotConnected
+	}
+
+	if _, err := metrics.NewCounter(name, value); err != nil {
+		return err
 	}
 
 	ctxQuery, cancel := context.WithTimeout(ctx, (3 * time.Second))
 	defer cancel()
 
-	res, err := ds.conn.Exec(ctxQuery, "INSERT INTO metrics_counter (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = metrics_counter.value + EXCLUDED.value;", name, value)
+	_, err := ds.pool.Exec(ctxQuery, "INSERT INTO metrics_counter (name, value) VALUES (@name, @value) ON CONFLICT (name) DO UPDATE SET value = metrics_counter.value + EXCLUDED.value;",
+		db.NamedArgs{"name": name, "value": value})
 	if err != nil {
-		logger.Log.Warn(err.Error(), logger.String("status", res.String()))
 		return err
 	}
 
@@ -273,7 +307,7 @@ func (ds *DBStorage) MigrateCreateSchema(ctx context.Context) {
 		return
 	}
 
-	if ds.conn == nil {
+	if ds.pool == nil {
 		logger.Log.Warn(db.ErrNotConnected.Error())
 		return
 	}
@@ -281,11 +315,96 @@ func (ds *DBStorage) MigrateCreateSchema(ctx context.Context) {
 	ctxQuery, cancel := context.WithTimeout(ctx, (30 * time.Second))
 	defer cancel()
 
-	res, err := ds.conn.Exec(ctxQuery, string(dump))
+	res, err := ds.pool.Exec(ctxQuery, string(dump))
 	if err != nil {
 		logger.Log.Warn(err.Error(), logger.String("status", res.String()))
 		return
 	}
+}
+
+func (ds *DBStorage) InsertBatch(opts ...StorageOption) error {
+	return ds.InsertBatchContext(context.Background(), opts...)
+}
+
+func (ds *DBStorage) InsertBatchContext(ctx context.Context, opts ...StorageOption) error {
+	o := &StorageOptions{}
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	if len(o.gauges) == 0 && len(o.counters) == 0 {
+		return nil
+	}
+
+	if ds.pool == nil {
+		return db.ErrNotConnected
+	}
+
+	ctxTx, cancel := context.WithTimeout(ctx, (30 * time.Second))
+	defer cancel()
+
+	tx, err := ds.pool.Begin(ctxTx)
+	if err != nil {
+		return err
+	}
+
+	if len(o.counters) > 0 {
+		ctxPrepareCounter, cancel := context.WithTimeout(ctxTx, (3 * time.Second))
+		defer cancel()
+
+		stmtCounter, err := tx.Prepare(ctxPrepareCounter, "insert-counter",
+			"INSERT INTO metrics_counter (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = metrics_counter.value + EXCLUDED.value;")
+		if err != nil {
+			if errR := tx.Rollback(ctxTx); errR != nil {
+				return errors.Join(err, errR)
+			}
+			return err
+		}
+
+		for _, counter := range o.counters {
+			ctxQuery, cancel := context.WithTimeout(ctxTx, (3 * time.Second))
+			defer cancel()
+
+			_, err := tx.Exec(ctxQuery, stmtCounter.Name, counter.Name(), counter.Value())
+			if err != nil {
+				if errR := tx.Rollback(ctxTx); errR != nil {
+					return errors.Join(err, errR)
+				}
+				return err
+			}
+		}
+	}
+
+	if len(o.gauges) > 0 {
+		ctxPrepareGauge, cancel := context.WithTimeout(ctxTx, (3 * time.Second))
+		defer cancel()
+
+		stmtGauge, err := tx.Prepare(ctxPrepareGauge, "insert-gauge",
+			"INSERT INTO metrics_gauge (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;")
+		if err != nil {
+			if errR := tx.Rollback(ctxTx); errR != nil {
+				return errors.Join(err, errR)
+			}
+			return err
+		}
+
+		for _, gauge := range o.gauges {
+			ctxQuery, cancel := context.WithTimeout(ctxTx, (3 * time.Second))
+			defer cancel()
+
+			_, err := tx.Exec(ctxQuery, stmtGauge.Name, gauge.Name(), gauge.Value())
+			if err != nil {
+				if errR := tx.Rollback(ctxTx); errR != nil {
+					return errors.Join(err, errR)
+				}
+				return err
+			}
+		}
+	}
+
+	tx.Commit(ctxTx)
+
+	return nil
 }
 
 var _ MetricsStorager = (*DBStorage)(nil)

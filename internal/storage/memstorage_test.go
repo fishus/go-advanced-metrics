@@ -176,6 +176,28 @@ func TestMemStorage_Gauges(t *testing.T) {
 	assert.Equal(t, gauges, m.Gauges())
 }
 
+func TestMemStorage_GaugesFiltered(t *testing.T) {
+	gauges := map[string]metrics.Gauge{}
+	a, _ := metrics.NewGauge("a", 1.0)
+	b, _ := metrics.NewGauge("b", 2.1)
+	c, _ := metrics.NewGauge("c", 3.4)
+	gauges["a"] = *a
+	gauges["b"] = *b
+	gauges["c"] = *c
+
+	m := &MemStorage{
+		gauges: gauges,
+	}
+
+	filter := []string{"b", "c"}
+
+	want := map[string]metrics.Gauge{}
+	want["b"] = *b
+	want["c"] = *c
+
+	assert.Equal(t, want, m.Gauges(FilterNames(filter)))
+}
+
 func TestMemStorage_SetGauge(t *testing.T) {
 	type gauge struct {
 		name  string
@@ -447,6 +469,28 @@ func TestMemStorage_Counters(t *testing.T) {
 	assert.Equal(t, counters, m.Counters())
 }
 
+func TestMemStorage_CountersFiltered(t *testing.T) {
+	counters := map[string]metrics.Counter{}
+	a, _ := metrics.NewCounter("a", 1)
+	b, _ := metrics.NewCounter("b", 100)
+	c, _ := metrics.NewCounter("c", 1000)
+	counters["a"] = *a
+	counters["b"] = *b
+	counters["c"] = *c
+
+	m := &MemStorage{
+		counters: counters,
+	}
+
+	filter := []string{"b", "c"}
+
+	want := map[string]metrics.Counter{}
+	want["b"] = *b
+	want["c"] = *c
+
+	assert.Equal(t, want, m.Counters(FilterNames(filter)))
+}
+
 func TestMemStorage_AddCounter(t *testing.T) {
 	type counter struct {
 		name  string
@@ -551,6 +595,134 @@ func TestMemStorage_AddCounter(t *testing.T) {
 			}
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, m.counters)
+		})
+	}
+}
+
+func TestMemStorage_InsertBatch(t *testing.T) {
+	type counter struct {
+		name  string
+		value int64
+	}
+
+	type gauge struct {
+		name  string
+		value float64
+	}
+
+	testCases := []struct {
+		name     string
+		storage  *MemStorage
+		counters []counter
+		gauges   []gauge
+		want     *MemStorage
+	}{
+		{
+			name: "Insert counters",
+			counters: []counter{
+				{"a", 2},
+				{"b", 3},
+			},
+			storage: func() *MemStorage {
+				m := &MemStorage{}
+				m.AddCounter("a", 5)
+				return m
+			}(),
+			want: func() *MemStorage {
+				m := &MemStorage{}
+				m.AddCounter("a", 7)
+				m.AddCounter("b", 3)
+				return m
+			}(),
+		},
+		{
+			name: "Insert gauges",
+			gauges: []gauge{
+				{name: "a", value: 1.2},
+				{name: "b", value: 2.3},
+			},
+			storage: func() *MemStorage {
+				m := &MemStorage{}
+				m.SetGauge("a", 5)
+				return m
+			}(),
+			want: func() *MemStorage {
+				m := &MemStorage{}
+				m.SetGauge("a", 1.2)
+				m.SetGauge("b", 2.3)
+				return m
+			}(),
+		},
+		{
+			name: "Insert counters and gauges",
+			counters: []counter{
+				{"a", 2},
+				{"b", 3},
+			},
+			gauges: []gauge{
+				{name: "a", value: 1.2},
+				{name: "b", value: 2.3},
+			},
+			storage: func() *MemStorage {
+				m := &MemStorage{}
+				m.SetGauge("a", 5)
+				m.AddCounter("a", 5)
+				return m
+			}(),
+			want: func() *MemStorage {
+				m := &MemStorage{}
+				m.SetGauge("a", 1.2)
+				m.SetGauge("b", 2.3)
+				m.AddCounter("a", 7)
+				m.AddCounter("b", 3)
+				return m
+			}(),
+		},
+		{
+			name: "Insert nothing",
+			storage: func() *MemStorage {
+				m := &MemStorage{}
+				return m
+			}(),
+			want: func() *MemStorage {
+				m := &MemStorage{}
+				return m
+			}(),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if len(tc.counters) == 0 && len(tc.gauges) == 0 {
+				err := tc.storage.InsertBatch()
+				require.NoError(t, err)
+				return
+			}
+
+			var countersBatch []metrics.Counter
+			if len(tc.counters) > 0 {
+				for _, v := range tc.counters {
+					c, err := metrics.NewCounter(v.name, v.value)
+					if err == nil {
+						countersBatch = append(countersBatch, *c)
+					}
+				}
+			}
+
+			var gaugesBatch []metrics.Gauge
+			if len(tc.gauges) > 0 {
+				for _, v := range tc.gauges {
+					g, err := metrics.NewGauge(v.name, v.value)
+					if err == nil {
+						gaugesBatch = append(gaugesBatch, *g)
+					}
+				}
+			}
+
+			err := tc.storage.InsertBatch(WithCounters(countersBatch), WithGauges(gaugesBatch))
+			require.NoError(t, err)
+			assert.EqualValues(t, tc.want.Counters(), tc.storage.Counters())
+			assert.EqualValues(t, tc.want.Gauges(), tc.storage.Gauges())
 		})
 	}
 }

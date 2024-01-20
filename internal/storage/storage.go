@@ -5,14 +5,14 @@ import "github.com/fishus/go-advanced-metrics/internal/metrics"
 type GaugeStorager interface {
 	Gauge(name string) (metrics.Gauge, bool)
 	GaugeValue(name string) (float64, bool)
-	Gauges() map[string]metrics.Gauge
+	Gauges(filters ...StorageFilter) map[string]metrics.Gauge
 	SetGauge(name string, value float64) error
 }
 
 type CounterStorager interface {
 	Counter(name string) (metrics.Counter, bool)
 	CounterValue(name string) (int64, bool)
-	Counters() map[string]metrics.Counter
+	Counters(filters ...StorageFilter) map[string]metrics.Counter
 	AddCounter(name string, value int64) error
 }
 
@@ -20,6 +20,7 @@ type CounterStorager interface {
 type MetricsStorager interface {
 	GaugeStorager
 	CounterStorager
+	InsertBatch(opts ...StorageOption) error
 }
 
 // StorageSaver is an interface for save a set of metrics

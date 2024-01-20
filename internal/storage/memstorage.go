@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
@@ -37,7 +38,24 @@ func (m *MemStorage) GaugeValue(name string) (float64, bool) {
 }
 
 // Gauges returns all gauge metrics
-func (m *MemStorage) Gauges() map[string]metrics.Gauge {
+func (m *MemStorage) Gauges(filters ...StorageFilter) map[string]metrics.Gauge {
+	f := &StorageFilters{}
+	for _, filter := range filters {
+		filter(f)
+	}
+
+	if len(f.names) > 0 {
+		diff := make(map[string]metrics.Gauge)
+
+		for _, name := range f.names {
+			if g, ok := m.gauges[name]; ok {
+				diff[name] = g
+			}
+		}
+
+		return diff
+	}
+
 	return m.gauges
 }
 
@@ -80,7 +98,24 @@ func (m *MemStorage) CounterValue(name string) (int64, bool) {
 }
 
 // Counters returns all counter metrics
-func (m *MemStorage) Counters() map[string]metrics.Counter {
+func (m *MemStorage) Counters(filters ...StorageFilter) map[string]metrics.Counter {
+	f := &StorageFilters{}
+	for _, filter := range filters {
+		filter(f)
+	}
+
+	if len(f.names) > 0 {
+		diff := make(map[string]metrics.Counter)
+
+		for _, name := range f.names {
+			if c, ok := m.counters[name]; ok {
+				diff[name] = c
+			}
+		}
+
+		return diff
+	}
+
 	return m.counters
 }
 
@@ -102,6 +137,65 @@ func (m *MemStorage) AddCounter(name string, value int64) error {
 		}
 	}
 	m.counters[name] = counter
+	return nil
+}
+
+func (m *MemStorage) InsertBatch(opts ...StorageOption) error {
+	return m.InsertBatchContext(context.Background(), opts...)
+}
+
+func (m *MemStorage) InsertBatchContext(ctx context.Context, opts ...StorageOption) error {
+	o := &StorageOptions{}
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	if len(o.gauges) == 0 && len(o.counters) == 0 {
+		return nil
+	}
+
+	// Сначала пробуем добавить во временное пустое хранилище.
+	// Если будут ошибки - откат. Без ошибок сохраняем в настоящее хранилище
+	{
+		// Temp storage
+		ts := &MemStorage{}
+
+		// Check counters for errors
+		if len(o.counters) > 0 {
+			for _, c := range o.counters {
+				err := ts.AddCounter(c.Name(), c.Value())
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		// Check gauges for errors
+		if len(o.gauges) > 0 {
+			for _, g := range o.gauges {
+				err := ts.SetGauge(g.Name(), g.Value())
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Insert to storage
+	{
+		if len(o.counters) > 0 {
+			for _, c := range o.counters {
+				_ = m.AddCounter(c.Name(), c.Value())
+			}
+		}
+
+		if len(o.gauges) > 0 {
+			for _, g := range o.gauges {
+				_ = m.SetGauge(g.Name(), g.Value())
+			}
+		}
+	}
+
 	return nil
 }
 

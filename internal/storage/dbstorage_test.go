@@ -42,9 +42,9 @@ func (s *DBStorageSuite) TestNewDBStorage() {
 func (s *DBStorageSuite) TestGauge() {
 	ds := NewDBStorage(s.mock)
 
-	s.mock.ExpectQuery("^SELECT (.+) FROM metrics_gauge WHERE (.+)$").WithArgs("a").WillReturnRows(s.mock.NewRows([]string{"value"}).AddRow(float64(2.1)))
-	s.mock.ExpectQuery("^SELECT (.+) FROM metrics_gauge WHERE (.+)$").WithArgs("b").WillReturnRows(s.mock.NewRows([]string{"value"}).AddRow(float64(-1.5)))
-	s.mock.ExpectQuery("^SELECT (.+) FROM metrics_gauge WHERE (.+)$").WithArgs("c").WillReturnRows(s.mock.NewRows([]string{"value"}))
+	s.mock.ExpectQuery("^SELECT value FROM metrics_gauge WHERE (.+) LIMIT 1;$").WithArgs("a").WillReturnRows(s.mock.NewRows([]string{"value"}).AddRow(float64(2.1)))
+	s.mock.ExpectQuery("^SELECT value FROM metrics_gauge WHERE (.+) LIMIT 1;$").WithArgs("b").WillReturnRows(s.mock.NewRows([]string{"value"}).AddRow(float64(-1.5)))
+	s.mock.ExpectQuery("^SELECT value FROM metrics_gauge WHERE (.+) LIMIT 1;$").WithArgs("c").WillReturnRows(s.mock.NewRows([]string{"value"}))
 
 	type want struct {
 		gauge metrics.Gauge
@@ -98,15 +98,15 @@ func (s *DBStorageSuite) TestGauge() {
 		})
 	}
 	err := s.mock.ExpectationsWereMet()
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *DBStorageSuite) TestGaugeValue() {
 	ds := NewDBStorage(s.mock)
 
-	s.mock.ExpectQuery("^SELECT (.+) FROM metrics_gauge WHERE (.+)$").WithArgs("a").WillReturnRows(s.mock.NewRows([]string{"value"}).AddRow(float64(2.1)))
-	s.mock.ExpectQuery("^SELECT (.+) FROM metrics_gauge WHERE (.+)$").WithArgs("b").WillReturnRows(s.mock.NewRows([]string{"value"}).AddRow(float64(-1.5)))
-	s.mock.ExpectQuery("^SELECT (.+) FROM metrics_gauge WHERE (.+)$").WithArgs("c").WillReturnRows(s.mock.NewRows([]string{"value"}))
+	s.mock.ExpectQuery("^SELECT value FROM metrics_gauge WHERE (.+) LIMIT 1;$").WithArgs("a").WillReturnRows(s.mock.NewRows([]string{"value"}).AddRow(float64(2.1)))
+	s.mock.ExpectQuery("^SELECT value FROM metrics_gauge WHERE (.+) LIMIT 1;$").WithArgs("b").WillReturnRows(s.mock.NewRows([]string{"value"}).AddRow(float64(-1.5)))
+	s.mock.ExpectQuery("^SELECT value FROM metrics_gauge WHERE (.+) LIMIT 1;$").WithArgs("c").WillReturnRows(s.mock.NewRows([]string{"value"}))
 
 	type want struct {
 		value float64
@@ -154,13 +154,13 @@ func (s *DBStorageSuite) TestGaugeValue() {
 		})
 	}
 	err := s.mock.ExpectationsWereMet()
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *DBStorageSuite) TestGauges() {
 	ds := NewDBStorage(s.mock)
 
-	s.mock.ExpectQuery("^SELECT name, value FROM metrics_gauge;$").
+	s.mock.ExpectQuery("SELECT name, value FROM metrics_gauge;").
 		WillReturnRows(s.mock.NewRows([]string{"name", "value"}).
 			AddRow("b", float64(2.1)).
 			AddRow("a", float64(1.0)))
@@ -174,7 +174,30 @@ func (s *DBStorageSuite) TestGauges() {
 	s.Equal(want, ds.Gauges())
 
 	err := s.mock.ExpectationsWereMet()
-	s.NoError(err)
+	s.Require().NoError(err)
+}
+
+func (s *DBStorageSuite) TestGaugesFiltered() {
+	ds := NewDBStorage(s.mock)
+
+	filter := []string{"a", "b"}
+
+	s.mock.ExpectQuery("SELECT name, value FROM metrics_gauge WHERE (.+);").
+		WithArgs(filter).
+		WillReturnRows(s.mock.NewRows([]string{"name", "value"}).
+			AddRow("b", float64(2.1)).
+			AddRow("a", float64(1.0)))
+
+	want := map[string]metrics.Gauge{}
+	a, _ := metrics.NewGauge("a", 1.0)
+	b, _ := metrics.NewGauge("b", 2.1)
+	want["a"] = *a
+	want["b"] = *b
+
+	s.Equal(want, ds.Gauges(FilterNames(filter)))
+
+	err := s.mock.ExpectationsWereMet()
+	s.Require().NoError(err)
 }
 
 func (s *DBStorageSuite) TestSetGauge() {
@@ -229,7 +252,7 @@ func (s *DBStorageSuite) TestSetGauge() {
 		})
 	}
 	err := s.mock.ExpectationsWereMet()
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *DBStorageSuite) TestCounter() {
@@ -279,7 +302,7 @@ func (s *DBStorageSuite) TestCounter() {
 		})
 	}
 	err := s.mock.ExpectationsWereMet()
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *DBStorageSuite) TestCounterValue() {
@@ -326,13 +349,13 @@ func (s *DBStorageSuite) TestCounterValue() {
 		})
 	}
 	err := s.mock.ExpectationsWereMet()
-	s.NoError(err)
+	s.Require().NoError(err)
 }
 
 func (s *DBStorageSuite) TestCounters() {
 	ds := NewDBStorage(s.mock)
 
-	s.mock.ExpectQuery("^SELECT name, value FROM metrics_counter;$").
+	s.mock.ExpectQuery("SELECT name, value FROM metrics_counter;").
 		WillReturnRows(s.mock.NewRows([]string{"name", "value"}).
 			AddRow("a", int64(1)).
 			AddRow("b", int64(100)))
@@ -346,7 +369,30 @@ func (s *DBStorageSuite) TestCounters() {
 	s.Equal(want, ds.Counters())
 
 	err := s.mock.ExpectationsWereMet()
-	s.NoError(err)
+	s.Require().NoError(err)
+}
+
+func (s *DBStorageSuite) TestCountersFiltered() {
+	ds := NewDBStorage(s.mock)
+
+	filter := []string{"a", "b"}
+
+	s.mock.ExpectQuery("SELECT name, value FROM metrics_counter WHERE (.+);").
+		WithArgs(filter).
+		WillReturnRows(s.mock.NewRows([]string{"name", "value"}).
+			AddRow("a", int64(1)).
+			AddRow("b", int64(100)))
+
+	want := map[string]metrics.Counter{}
+	a, _ := metrics.NewCounter("a", 1)
+	b, _ := metrics.NewCounter("b", 100)
+	want["a"] = *a
+	want["b"] = *b
+
+	s.Equal(want, ds.Counters(FilterNames(filter)))
+
+	err := s.mock.ExpectationsWereMet()
+	s.Require().NoError(err)
 }
 
 func (s *DBStorageSuite) TestAddCounter() {
@@ -394,7 +440,108 @@ func (s *DBStorageSuite) TestAddCounter() {
 		})
 	}
 	err := s.mock.ExpectationsWereMet()
-	s.NoError(err)
+	s.Require().NoError(err)
+}
+
+func (s *DBStorageSuite) TestInsertBatch() {
+	type counter struct {
+		name  string
+		value int64
+	}
+
+	type gauge struct {
+		name  string
+		value float64
+	}
+
+	testCases := []struct {
+		name     string
+		counters []counter
+		gauges   []gauge
+	}{
+		{
+			name: "Insert counters",
+			counters: []counter{
+				{name: "a", value: 1},
+				{name: "b", value: 2},
+			},
+		},
+		{
+			name: "Insert gauges",
+			gauges: []gauge{
+				{name: "a", value: 1.2},
+				{name: "b", value: 2.3},
+			},
+		},
+		{
+			name: "Insert counters and gauges",
+			counters: []counter{
+				{name: "a", value: 3},
+				{name: "b", value: 4},
+			},
+			gauges: []gauge{
+				{name: "a", value: 3.4},
+				{name: "b", value: 4.5},
+			},
+		},
+		{
+			name: "Insert nothing",
+		},
+	}
+
+	ds := NewDBStorage(s.mock)
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			if len(tc.counters) == 0 && len(tc.gauges) == 0 {
+				err := ds.InsertBatch()
+				s.Require().NoError(err)
+				return
+			}
+
+			s.mock.ExpectBegin()
+
+			var countersBatch []metrics.Counter
+			if len(tc.counters) > 0 {
+				s.mock.ExpectPrepare("insert-counter", `^INSERT INTO metrics_counter \(name, value\) VALUES (.+) ON CONFLICT \(name\) DO UPDATE SET value \= metrics_counter\.value \+ EXCLUDED\.value;$`)
+				for _, v := range tc.counters {
+					s.mock.ExpectExec("insert-counter").WithArgs(v.name, int64(v.value)).WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+					c, err := metrics.NewCounter(v.name, v.value)
+					if err == nil {
+						countersBatch = append(countersBatch, *c)
+					}
+				}
+			}
+
+			var gaugesBatch []metrics.Gauge
+			if len(tc.gauges) > 0 {
+				s.mock.ExpectPrepare("insert-gauge", `^INSERT INTO metrics_gauge \(name, value\) VALUES (.+) ON CONFLICT \(name\) DO UPDATE SET value \= EXCLUDED\.value;$`)
+				for _, v := range tc.gauges {
+					s.mock.ExpectExec("insert-gauge").WithArgs(v.name, float64(v.value)).WillReturnResult(pgxmock.NewResult("UPDATE", 1))
+					g, err := metrics.NewGauge(v.name, v.value)
+					if err == nil {
+						gaugesBatch = append(gaugesBatch, *g)
+					}
+				}
+			}
+
+			s.mock.ExpectCommit()
+
+			var err error
+			if len(tc.counters) > 0 && len(tc.gauges) > 0 {
+				err = ds.InsertBatch(WithCounters(countersBatch), WithGauges(gaugesBatch))
+			} else if len(tc.counters) > 0 {
+				err = ds.InsertBatch(WithCounters(countersBatch))
+			} else if len(tc.gauges) > 0 {
+				err = ds.InsertBatch(WithGauges(gaugesBatch))
+			} else {
+				err = ds.InsertBatch()
+			}
+
+			s.Require().NoError(err)
+		})
+	}
+	err := s.mock.ExpectationsWereMet()
+	s.Require().NoError(err)
 }
 
 func TestDBStorageSuite(t *testing.T) {

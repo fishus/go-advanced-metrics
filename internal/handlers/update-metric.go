@@ -66,6 +66,10 @@ func UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		err := storage.SetGauge(metricName, metricValue)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			logger.Log.Debug(err.Error(), logger.Any("metric", struct {
+				name  string
+				value float64
+			}{metricName, metricValue}))
 			return
 		}
 	default:
