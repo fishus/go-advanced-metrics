@@ -47,13 +47,31 @@ func collectAndSendMetrics() {
 		if now.After(reportAfter) {
 			reportAfter = now.Add(config.reportInterval)
 
+			metricsBatch := make([]metrics.Metrics, 0)
+
 			for name, counter := range data.Counters() {
-				_ = postUpdateMetrics(client, gz, metrics.TypeCounter, name, counter.Value(), 0)
+				metric := metrics.Metrics{
+					ID:    name,
+					MType: metrics.TypeCounter,
+					Delta: new(int64),
+					Value: nil,
+				}
+				*metric.Delta = counter.Value()
+				metricsBatch = append(metricsBatch, metric)
 			}
 
 			for name, gauge := range data.Gauges() {
-				_ = postUpdateMetrics(client, gz, metrics.TypeGauge, name, 0, gauge.Value())
+				metric := metrics.Metrics{
+					ID:    name,
+					MType: metrics.TypeGauge,
+					Value: new(float64),
+					Delta: nil,
+				}
+				*metric.Value = gauge.Value()
+				metricsBatch = append(metricsBatch, metric)
 			}
+
+			_ = postUpdateMetrics(client, gz, metricsBatch)
 
 			// Reset metrics
 			data = storage.NewMemStorage()
@@ -63,26 +81,12 @@ func collectAndSendMetrics() {
 	}
 }
 
-func postUpdateMetrics(client *resty.Client, gz *gzip.Writer, mtype, name string, delta int64, value float64) error {
-	var metric metrics.Metrics
-
-	metric.ID = name
-	metric.MType = mtype
-
-	switch mtype {
-	case metrics.TypeCounter:
-		metric.Delta = new(int64)
-		*metric.Delta = delta
-	case metrics.TypeGauge:
-		metric.Value = new(float64)
-		*metric.Value = value
-	}
-
-	jsonBody, err := json.Marshal(metric)
+func postUpdateMetrics(client *resty.Client, gz *gzip.Writer, batch []metrics.Metrics) error {
+	jsonBody, err := json.Marshal(batch)
 	if err != nil {
 		logger.Log.Error(err.Error(),
 			logger.String("event", "encode json"),
-			logger.Any("data", metric))
+			logger.Any("data", batch))
 		return err
 	}
 
@@ -103,7 +107,7 @@ func postUpdateMetrics(client *resty.Client, gz *gzip.Writer, mtype, name string
 		return err
 	}
 
-	logger.Log.Debug(`Send POST /update/ request`,
+	logger.Log.Debug(`Send POST /updates/ request`,
 		logger.String("event", "send request"),
 		logger.String("addr", config.serverAddr),
 		logger.ByteString("body", jsonBody))
@@ -112,12 +116,12 @@ func postUpdateMetrics(client *resty.Client, gz *gzip.Writer, mtype, name string
 		SetHeader("Content-Type", "application/json; charset=utf-8").
 		SetHeader("Content-Encoding", "gzip").
 		SetBody(buf).
-		Post("update/")
+		Post("updates/")
 
 	if err != nil {
 		logger.Log.Error(err.Error(),
 			logger.String("event", "send request"),
-			logger.String("url", "http://"+config.serverAddr+"/update/"),
+			logger.String("url", "http://"+config.serverAddr+"/updates/"),
 			logger.ByteString("body", jsonBody))
 		return err
 	}
