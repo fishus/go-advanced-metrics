@@ -113,7 +113,7 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
-			if tc.args != nil && len(tc.args) > 0 {
+			if len(tc.args) > 0 {
 				os.Args = append(os.Args, tc.args...)
 			}
 
@@ -180,7 +180,7 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
-			if tc.envs != nil && len(tc.envs) > 0 {
+			if len(tc.envs) > 0 {
 				for _, v := range tc.envs {
 					e := strings.Split(v, "=")
 
@@ -342,11 +342,11 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
-			if tc.args != nil && len(tc.args) > 0 {
+			if len(tc.args) > 0 {
 				os.Args = append(os.Args, tc.args...)
 			}
 
-			if tc.envs != nil && len(tc.envs) > 0 {
+			if len(tc.envs) > 0 {
 				for _, v := range tc.envs {
 					e := strings.Split(v, "=")
 
