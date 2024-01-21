@@ -33,7 +33,7 @@ func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch metricType {
 	case metrics.TypeCounter:
-		Counter, ok := storage.Counter(metricName)
+		Counter, ok := storage.CounterContext(r.Context(), metricName)
 		if !ok {
 			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
 			http.Error(w, fmt.Sprintf(`Counter '%s' not found`, metricName), http.StatusNotFound)
@@ -48,7 +48,7 @@ func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case metrics.TypeGauge:
-		Gauge, ok := storage.Gauge(metricName)
+		Gauge, ok := storage.GaugeContext(r.Context(), metricName)
 		if !ok {
 			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
 			http.Error(w, fmt.Sprintf(`Gauge '%s' not found`, metricName), http.StatusNotFound)

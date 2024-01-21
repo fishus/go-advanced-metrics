@@ -93,7 +93,7 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err := storage.InsertBatch(store.WithCounters(countersBatch), store.WithGauges(gaugesBatch))
+	err := storage.InsertBatchContext(r.Context(), store.WithCounters(countersBatch), store.WithGauges(gaugesBatch))
 	if err != nil {
 		JSONError(w, err.Error(), http.StatusInternalServerError)
 		logger.Log.Debug(err.Error(),
@@ -105,7 +105,7 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	metricsBatch = metricsBatch[:0]
 
 	if len(cNames) > 0 {
-		counters := storage.Counters(store.FilterNames(cNames))
+		counters := storage.CountersContext(r.Context(), store.FilterNames(cNames))
 		for _, cn := range cNames {
 			if c, ok := counters[cn]; ok {
 				metric := metrics.Metrics{
@@ -120,7 +120,7 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(gNames) > 0 {
-		gauges := storage.Gauges(store.FilterNames(gNames))
+		gauges := storage.GaugesContext(r.Context(), store.FilterNames(gNames))
 		for _, gn := range gNames {
 			if g, ok := gauges[gn]; ok {
 				metric := metrics.Metrics{

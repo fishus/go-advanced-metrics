@@ -46,13 +46,13 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err := storage.AddCounter(metric.ID, *metric.Delta)
+		err := storage.AddCounterContext(r.Context(), metric.ID, *metric.Delta)
 		if err != nil {
 			JSONError(w, err.Error(), http.StatusBadRequest)
 			logger.Log.Debug(err.Error(), logger.Any("metric", metric))
 			return
 		}
-		counterValue, _ := storage.CounterValue(metric.ID)
+		counterValue, _ := storage.CounterValueContext(r.Context(), metric.ID)
 		metric.Delta = new(int64)
 		*metric.Delta = counterValue
 		metric.Value = nil
@@ -63,13 +63,13 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err := storage.SetGauge(metric.ID, *metric.Value)
+		err := storage.SetGaugeContext(r.Context(), metric.ID, *metric.Value)
 		if err != nil {
 			JSONError(w, err.Error(), http.StatusBadRequest)
 			logger.Log.Debug(err.Error(), logger.Any("metric", metric))
 			return
 		}
-		gaugeValue, _ := storage.GaugeValue(metric.ID)
+		gaugeValue, _ := storage.GaugeValueContext(r.Context(), metric.ID)
 		metric.Value = new(float64)
 		*metric.Value = gaugeValue
 		metric.Delta = nil

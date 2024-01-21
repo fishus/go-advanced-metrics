@@ -46,7 +46,7 @@ func UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 			metricValue = i
 		}
 
-		err := storage.AddCounter(metricName, metricValue)
+		err := storage.AddCounterContext(r.Context(), metricName, metricValue)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -63,7 +63,7 @@ func UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 			metricValue = i
 		}
 
-		err := storage.SetGauge(metricName, metricValue)
+		err := storage.SetGaugeContext(r.Context(), metricName, metricValue)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			logger.Log.Debug(err.Error(), logger.Any("metric", struct {

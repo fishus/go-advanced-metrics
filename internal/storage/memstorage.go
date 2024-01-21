@@ -22,6 +22,11 @@ func NewMemStorage() *MemStorage {
 
 // Gauge returns the gauge metric by name
 func (m *MemStorage) Gauge(name string) (metrics.Gauge, bool) {
+	return m.GaugeContext(context.Background(), name)
+}
+
+// GaugeContext returns the gauge metric by name
+func (m *MemStorage) GaugeContext(ctx context.Context, name string) (metrics.Gauge, bool) {
 	if v, ok := m.gauges[name]; ok {
 		return v, ok
 	} else {
@@ -31,6 +36,11 @@ func (m *MemStorage) Gauge(name string) (metrics.Gauge, bool) {
 
 // GaugeValue returns the gauge metric value by name
 func (m *MemStorage) GaugeValue(name string) (float64, bool) {
+	return m.GaugeValueContext(context.Background(), name)
+}
+
+// GaugeValueContext returns the gauge metric value by name
+func (m *MemStorage) GaugeValueContext(ctx context.Context, name string) (float64, bool) {
 	if gauge, ok := m.gauges[name]; ok {
 		return gauge.Value(), ok
 	}
@@ -39,6 +49,11 @@ func (m *MemStorage) GaugeValue(name string) (float64, bool) {
 
 // Gauges returns all gauge metrics
 func (m *MemStorage) Gauges(filters ...StorageFilter) map[string]metrics.Gauge {
+	return m.GaugesContext(context.Background(), filters...)
+}
+
+// GaugesContext returns all gauge metrics
+func (m *MemStorage) GaugesContext(ctx context.Context, filters ...StorageFilter) map[string]metrics.Gauge {
 	f := &StorageFilters{}
 	for _, filter := range filters {
 		filter(f)
@@ -60,6 +75,10 @@ func (m *MemStorage) Gauges(filters ...StorageFilter) map[string]metrics.Gauge {
 }
 
 func (m *MemStorage) SetGauge(name string, value float64) error {
+	return m.SetGaugeContext(context.Background(), name, value)
+}
+
+func (m *MemStorage) SetGaugeContext(ctx context.Context, name string, value float64) error {
 	if m.gauges == nil {
 		m.gauges = make(map[string]metrics.Gauge)
 	}
@@ -82,6 +101,11 @@ func (m *MemStorage) SetGauge(name string, value float64) error {
 
 // Counter returns the counter metric by name
 func (m *MemStorage) Counter(name string) (metrics.Counter, bool) {
+	return m.CounterContext(context.Background(), name)
+}
+
+// CounterContext returns the counter metric by name
+func (m *MemStorage) CounterContext(ctx context.Context, name string) (metrics.Counter, bool) {
 	if v, ok := m.counters[name]; ok {
 		return v, ok
 	} else {
@@ -91,6 +115,11 @@ func (m *MemStorage) Counter(name string) (metrics.Counter, bool) {
 
 // CounterValue returns the counter metric value by name
 func (m *MemStorage) CounterValue(name string) (int64, bool) {
+	return m.CounterValueContext(context.Background(), name)
+}
+
+// CounterValueContext returns the counter metric value by name
+func (m *MemStorage) CounterValueContext(ctx context.Context, name string) (int64, bool) {
 	if v, ok := m.counters[name]; ok {
 		return v.Value(), ok
 	}
@@ -99,6 +128,11 @@ func (m *MemStorage) CounterValue(name string) (int64, bool) {
 
 // Counters returns all counter metrics
 func (m *MemStorage) Counters(filters ...StorageFilter) map[string]metrics.Counter {
+	return m.CountersContext(context.Background(), filters...)
+}
+
+// CountersContext returns all counter metrics
+func (m *MemStorage) CountersContext(ctx context.Context, filters ...StorageFilter) map[string]metrics.Counter {
 	f := &StorageFilters{}
 	for _, filter := range filters {
 		filter(f)
@@ -120,6 +154,10 @@ func (m *MemStorage) Counters(filters ...StorageFilter) map[string]metrics.Count
 }
 
 func (m *MemStorage) AddCounter(name string, value int64) error {
+	return m.AddCounterContext(context.Background(), name, value)
+}
+
+func (m *MemStorage) AddCounterContext(ctx context.Context, name string, value int64) error {
 	if m.counters == nil {
 		m.counters = make(map[string]metrics.Counter)
 	}
@@ -163,7 +201,7 @@ func (m *MemStorage) InsertBatchContext(ctx context.Context, opts ...StorageOpti
 		// Check counters for errors
 		if len(o.counters) > 0 {
 			for _, c := range o.counters {
-				err := ts.AddCounter(c.Name(), c.Value())
+				err := ts.AddCounterContext(ctx, c.Name(), c.Value())
 				if err != nil {
 					return err
 				}
@@ -173,7 +211,7 @@ func (m *MemStorage) InsertBatchContext(ctx context.Context, opts ...StorageOpti
 		// Check gauges for errors
 		if len(o.gauges) > 0 {
 			for _, g := range o.gauges {
-				err := ts.SetGauge(g.Name(), g.Value())
+				err := ts.SetGaugeContext(ctx, g.Name(), g.Value())
 				if err != nil {
 					return err
 				}
@@ -185,13 +223,13 @@ func (m *MemStorage) InsertBatchContext(ctx context.Context, opts ...StorageOpti
 	{
 		if len(o.counters) > 0 {
 			for _, c := range o.counters {
-				_ = m.AddCounter(c.Name(), c.Value())
+				_ = m.AddCounterContext(ctx, c.Name(), c.Value())
 			}
 		}
 
 		if len(o.gauges) > 0 {
 			for _, g := range o.gauges {
-				_ = m.SetGauge(g.Name(), g.Value())
+				_ = m.SetGaugeContext(ctx, g.Name(), g.Value())
 			}
 		}
 	}
