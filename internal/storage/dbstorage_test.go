@@ -255,6 +255,18 @@ func (s *DBStorageSuite) TestSetGauge() {
 	s.Require().NoError(err)
 }
 
+func (s *DBStorageSuite) TestResetGauges() {
+	ds := NewDBStorage(s.mock)
+
+	s.mock.ExpectExec(`^TRUNCATE metrics_gauge\;$`).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
+	err := ds.ResetGauges()
+	s.Require().NoError(err)
+
+	err = s.mock.ExpectationsWereMet()
+	s.Require().NoError(err)
+}
+
 func (s *DBStorageSuite) TestCounter() {
 	ds := NewDBStorage(s.mock)
 
@@ -440,6 +452,18 @@ func (s *DBStorageSuite) TestAddCounter() {
 		})
 	}
 	err := s.mock.ExpectationsWereMet()
+	s.Require().NoError(err)
+}
+
+func (s *DBStorageSuite) TestResetCounters() {
+	ds := NewDBStorage(s.mock)
+
+	s.mock.ExpectExec(`^TRUNCATE metrics_counter\;$`).WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
+	err := ds.ResetCounters()
+	s.Require().NoError(err)
+
+	err = s.mock.ExpectationsWereMet()
 	s.Require().NoError(err)
 }
 

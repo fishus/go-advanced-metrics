@@ -15,6 +15,7 @@ type GaugeStorager interface {
 	GaugesContext(ctx context.Context, filters ...StorageFilter) map[string]metrics.Gauge
 	SetGauge(name string, value float64) error
 	SetGaugeContext(ctx context.Context, name string, value float64) error
+	ResetGauges() error
 }
 
 type CounterStorager interface {
@@ -26,12 +27,14 @@ type CounterStorager interface {
 	CountersContext(ctx context.Context, filters ...StorageFilter) map[string]metrics.Counter
 	AddCounter(name string, value int64) error
 	AddCounterContext(ctx context.Context, name string, value int64) error
+	ResetCounters() error
 }
 
 // MetricsStorager is an interface for managing a set of metrics
 type MetricsStorager interface {
 	GaugeStorager
 	CounterStorager
+	Reset() error
 	InsertBatch(opts ...StorageOption) error
 	InsertBatchContext(ctx context.Context, opts ...StorageOption) error
 }

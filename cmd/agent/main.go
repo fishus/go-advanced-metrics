@@ -12,5 +12,5 @@ func main() {
 		panic(err)
 	}
 	defer logger.Log.Sync()
-	collectAndSendMetrics()
+	collectAndPostMetrics()
 }

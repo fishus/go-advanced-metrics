@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
+	"io"
 	"runtime"
 	"time"
 
@@ -15,7 +17,7 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
-func collectAndSendMetrics() {
+func collectAndPostMetrics() {
 	// data contains a set of values for all metrics
 	data := storage.NewMemStorage()
 
@@ -29,55 +31,56 @@ func collectAndSendMetrics() {
 		logger.Log.Panic(err.Error())
 		return
 	}
-	now := time.Now()
 
-	pollAfter := now.Add(config.pollInterval)
-	reportAfter := now.Add(config.reportInterval)
+	ctx := context.Background()
 
+	go collectMetricsAtIntervals(ctx, ms, data)
+	go postMetricsAtIntervals(ctx, client, gz, data)
+
+	<-ctx.Done()
+}
+
+// Collect metrics every {options.pollInterval} seconds
+func collectMetricsAtIntervals(ctx context.Context, ms *runtime.MemStats, data *storage.MemStorage) {
+	ticker := time.NewTicker(config.pollInterval)
 	for {
-		now = time.Now()
+		<-ticker.C
+		collector.CollectMemStats(ms, data)
+	}
+}
 
-		// Collect metrics every {options.pollInterval} seconds
-		if now.After(pollAfter) {
-			pollAfter = now.Add(config.pollInterval)
-			collector.CollectMemStats(ms, data)
+func postMetricsAtIntervals(ctx context.Context, client *resty.Client, gz *gzip.Writer, data *storage.MemStorage) {
+	ticker := time.NewTicker(config.reportInterval)
+	for {
+		<-ticker.C
+		metricsBatch := make([]metrics.Metrics, 0)
+
+		for name, counter := range data.Counters() {
+			metric := metrics.Metrics{
+				ID:    name,
+				MType: metrics.TypeCounter,
+				Delta: new(int64),
+				Value: nil,
+			}
+			*metric.Delta = counter.Value()
+			metricsBatch = append(metricsBatch, metric)
 		}
 
-		// Send metrics to the server every {options.reportInterval} seconds
-		if now.After(reportAfter) {
-			reportAfter = now.Add(config.reportInterval)
-
-			metricsBatch := make([]metrics.Metrics, 0)
-
-			for name, counter := range data.Counters() {
-				metric := metrics.Metrics{
-					ID:    name,
-					MType: metrics.TypeCounter,
-					Delta: new(int64),
-					Value: nil,
-				}
-				*metric.Delta = counter.Value()
-				metricsBatch = append(metricsBatch, metric)
+		for name, gauge := range data.Gauges() {
+			metric := metrics.Metrics{
+				ID:    name,
+				MType: metrics.TypeGauge,
+				Value: new(float64),
+				Delta: nil,
 			}
-
-			for name, gauge := range data.Gauges() {
-				metric := metrics.Metrics{
-					ID:    name,
-					MType: metrics.TypeGauge,
-					Value: new(float64),
-					Delta: nil,
-				}
-				*metric.Value = gauge.Value()
-				metricsBatch = append(metricsBatch, metric)
-			}
-
-			_ = postUpdateMetrics(client, gz, metricsBatch)
-
+			*metric.Value = gauge.Value()
+			metricsBatch = append(metricsBatch, metric)
+		}
+		err := postUpdateMetrics(client, gz, metricsBatch)
+		if err == nil {
 			// Reset metrics
-			data = storage.NewMemStorage()
+			_ = data.Reset()
 		}
-
-		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -96,25 +99,27 @@ func postUpdateMetrics(client *resty.Client, gz *gzip.Writer, batch []metrics.Me
 	if err != nil {
 		logger.Log.Error(err.Error(),
 			logger.String("event", "compress request"),
-			logger.ByteString("body", jsonBody))
+			logger.Any("body", json.RawMessage(jsonBody)))
 		return err
 	}
 	err = gz.Close()
 	if err != nil {
 		logger.Log.Error(err.Error(),
 			logger.String("event", "compress request"),
-			logger.ByteString("body", jsonBody))
+			logger.Any("body", json.RawMessage(jsonBody)))
 		return err
 	}
 
 	logger.Log.Debug(`Send POST /updates/ request`,
 		logger.String("event", "send request"),
 		logger.String("addr", config.serverAddr),
-		logger.ByteString("body", jsonBody))
+		logger.Any("body", json.RawMessage(jsonBody)))
 
 	resp, err := client.R().
+		SetDoNotParseResponse(true).
 		SetHeader("Content-Type", "application/json; charset=utf-8").
 		SetHeader("Content-Encoding", "gzip").
+		SetHeader("Accept-Encoding", "gzip").
 		SetBody(buf).
 		Post("updates/")
 
@@ -122,11 +127,25 @@ func postUpdateMetrics(client *resty.Client, gz *gzip.Writer, batch []metrics.Me
 		logger.Log.Error(err.Error(),
 			logger.String("event", "send request"),
 			logger.String("url", "http://"+config.serverAddr+"/updates/"),
-			logger.ByteString("body", jsonBody))
+			logger.Any("body", json.RawMessage(jsonBody)))
 		return err
 	}
 
-	logger.Log.Debug(`Received response from the server`, logger.String("event", "response received"), logger.Any("headers", resp.Header()), logger.Any("body", resp.Body()))
+	rawBody := resp.RawBody()
+	defer rawBody.Close()
+
+	gzBody, err := gzip.NewReader(rawBody)
+	if err != nil {
+		return nil
+	}
+	defer gzBody.Close()
+
+	body, err := io.ReadAll(gzBody)
+	if err != nil {
+		return nil
+	}
+
+	logger.Log.Debug(`Received response from the server`, logger.String("event", "response received"), logger.Any("headers", resp.Header()), logger.Any("body", json.RawMessage(body)))
 
 	return nil
 }

@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
@@ -99,6 +100,11 @@ func (m *MemStorage) SetGaugeContext(ctx context.Context, name string, value flo
 	return nil
 }
 
+func (m *MemStorage) ResetGauges() error {
+	m.gauges = make(map[string]metrics.Gauge)
+	return nil
+}
+
 // Counter returns the counter metric by name
 func (m *MemStorage) Counter(name string) (metrics.Counter, bool) {
 	return m.CounterContext(context.Background(), name)
@@ -176,6 +182,17 @@ func (m *MemStorage) AddCounterContext(ctx context.Context, name string, value i
 	}
 	m.counters[name] = counter
 	return nil
+}
+
+func (m *MemStorage) ResetCounters() error {
+	m.counters = make(map[string]metrics.Counter)
+	return nil
+}
+
+func (m *MemStorage) Reset() error {
+	gErr := m.ResetGauges()
+	cErr := m.ResetCounters()
+	return errors.Join(gErr, cErr)
 }
 
 func (m *MemStorage) InsertBatch(opts ...StorageOption) error {

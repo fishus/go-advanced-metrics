@@ -161,6 +161,21 @@ func (ds *DBStorage) SetGaugeContext(ctx context.Context, name string, value flo
 	return nil
 }
 
+func (ds *DBStorage) ResetGauges() error {
+	if ds.pool == nil {
+		return db.ErrNotConnected
+	}
+
+	ctx := context.Background()
+
+	_, err := ds.pool.Exec(ctx, "TRUNCATE metrics_gauge;")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Counter returns the counter metric by name
 func (ds *DBStorage) Counter(name string) (metrics.Counter, bool) {
 	return ds.CounterContext(context.Background(), name)
@@ -299,6 +314,21 @@ func (ds *DBStorage) AddCounterContext(ctx context.Context, name string, value i
 	return nil
 }
 
+func (ds *DBStorage) ResetCounters() error {
+	if ds.pool == nil {
+		return db.ErrNotConnected
+	}
+
+	ctx := context.Background()
+
+	_, err := ds.pool.Exec(ctx, "TRUNCATE metrics_counter;")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // MigrateCreateSchema Создать все необходимые таблицы в базе данных.
 func (ds *DBStorage) MigrateCreateSchema(ctx context.Context) {
 	dump, err := os.ReadFile(`db/migration/create_schema.sql`)
@@ -320,6 +350,12 @@ func (ds *DBStorage) MigrateCreateSchema(ctx context.Context) {
 		logger.Log.Warn(err.Error(), logger.String("status", res.String()))
 		return
 	}
+}
+
+func (ds *DBStorage) Reset() error {
+	gErr := ds.ResetGauges()
+	cErr := ds.ResetCounters()
+	return errors.Join(gErr, cErr)
 }
 
 func (ds *DBStorage) InsertBatch(opts ...StorageOption) error {
