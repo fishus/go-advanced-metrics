@@ -3,8 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
@@ -135,7 +135,7 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save metrics values into a file
-	if Config.IsSyncMetricsSave && fmt.Sprintf("%T", storage) == "*store.FileStorage" {
+	if Config.IsSyncMetricsSave && reflect.TypeOf(storage).String() == reflect.TypeOf((*store.FileStorage)(nil)).String() {
 		err := storage.(*store.FileStorage).Save()
 		if !errors.Is(err, store.ErrEmptyFilename) {
 			if err != nil {

@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"reflect"
 	"syscall"
 	"time"
 
@@ -73,7 +73,7 @@ func runServer() {
 }
 
 func loadMetricsFromFile() {
-	if !config.isReqRestore || fmt.Sprintf("%T", handlers.Storage()) != "*storage.FileStorage" {
+	if !config.isReqRestore || reflect.TypeOf(handlers.Storage()).String() != reflect.TypeOf((*storage.FileStorage)(nil)).String() {
 		return
 	}
 
@@ -90,7 +90,7 @@ func loadMetricsFromFile() {
 }
 
 func saveMetricsAtIntervals() {
-	if config.storeInterval <= 0 || fmt.Sprintf("%T", handlers.Storage()) != "*storage.FileStorage" {
+	if config.storeInterval <= 0 || reflect.TypeOf(handlers.Storage()).String() != reflect.TypeOf((*storage.FileStorage)(nil)).String() {
 		return
 	}
 
@@ -122,7 +122,7 @@ func saveMetricsOnExit(server *http.Server) {
 	sig := <-termSig
 	logger.Log.Debug("Server interrupt signal caught", logger.String("event", "stop server"), logger.String("signal", sig.String()))
 
-	if fmt.Sprintf("%T", handlers.Storage()) == "*storage.FileStorage" {
+	if reflect.TypeOf(handlers.Storage()).String() == reflect.TypeOf((*storage.FileStorage)(nil)).String() {
 		s := handlers.Storage().(*storage.FileStorage)
 		err := s.Save()
 		if !errors.Is(err, storage.ErrEmptyFilename) {
