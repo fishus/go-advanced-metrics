@@ -286,11 +286,6 @@ func (m *MemStorage) InsertBatchContext(ctx context.Context, opts ...StorageOpti
 }
 
 func (m *MemStorage) MarshalJSON() ([]byte, error) {
-	m.muGauges.Lock()
-	m.muCounters.Lock()
-	defer m.muGauges.Unlock()
-	defer m.muCounters.Unlock()
-
 	return json.Marshal(&struct {
 		Gauges   map[string]metrics.Gauge   `json:"gauges"`
 		Counters map[string]metrics.Counter `json:"counters"`
@@ -301,11 +296,6 @@ func (m *MemStorage) MarshalJSON() ([]byte, error) {
 }
 
 func (m *MemStorage) UnmarshalJSON(data []byte) error {
-	m.muGauges.Lock()
-	m.muCounters.Lock()
-	defer m.muGauges.Unlock()
-	defer m.muCounters.Unlock()
-	
 	aux := &struct {
 		Gauges   map[string]metrics.Gauge   `json:"gauges"`
 		Counters map[string]metrics.Counter `json:"counters"`
