@@ -4,14 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
 // MemStorage contains a set of values for all metrics and store its in memory
 type MemStorage struct {
-	gauges   map[string]metrics.Gauge
-	counters map[string]metrics.Counter
+	gauges     map[string]metrics.Gauge
+	counters   map[string]metrics.Counter
+	muGauges   sync.Mutex
+	muCounters sync.Mutex
 }
 
 func NewMemStorage() *MemStorage {
@@ -28,6 +31,9 @@ func (m *MemStorage) Gauge(name string) (metrics.Gauge, bool) {
 
 // GaugeContext returns the gauge metric by name
 func (m *MemStorage) GaugeContext(ctx context.Context, name string) (metrics.Gauge, bool) {
+	m.muGauges.Lock()
+	defer m.muGauges.Unlock()
+
 	if v, ok := m.gauges[name]; ok {
 		return v, ok
 	} else {
@@ -42,6 +48,9 @@ func (m *MemStorage) GaugeValue(name string) (float64, bool) {
 
 // GaugeValueContext returns the gauge metric value by name
 func (m *MemStorage) GaugeValueContext(ctx context.Context, name string) (float64, bool) {
+	m.muGauges.Lock()
+	defer m.muGauges.Unlock()
+
 	if gauge, ok := m.gauges[name]; ok {
 		return gauge.Value(), ok
 	}
@@ -55,6 +64,9 @@ func (m *MemStorage) Gauges(filters ...StorageFilter) map[string]metrics.Gauge {
 
 // GaugesContext returns all gauge metrics
 func (m *MemStorage) GaugesContext(ctx context.Context, filters ...StorageFilter) map[string]metrics.Gauge {
+	m.muGauges.Lock()
+	defer m.muGauges.Unlock()
+
 	f := &StorageFilters{}
 	for _, filter := range filters {
 		filter(f)
@@ -80,6 +92,9 @@ func (m *MemStorage) SetGauge(name string, value float64) error {
 }
 
 func (m *MemStorage) SetGaugeContext(ctx context.Context, name string, value float64) error {
+	m.muGauges.Lock()
+	defer m.muGauges.Unlock()
+
 	if m.gauges == nil {
 		m.gauges = make(map[string]metrics.Gauge)
 	}
@@ -101,6 +116,8 @@ func (m *MemStorage) SetGaugeContext(ctx context.Context, name string, value flo
 }
 
 func (m *MemStorage) ResetGauges() error {
+	m.muGauges.Lock()
+	defer m.muGauges.Unlock()
 	m.gauges = make(map[string]metrics.Gauge)
 	return nil
 }
@@ -112,6 +129,9 @@ func (m *MemStorage) Counter(name string) (metrics.Counter, bool) {
 
 // CounterContext returns the counter metric by name
 func (m *MemStorage) CounterContext(ctx context.Context, name string) (metrics.Counter, bool) {
+	m.muCounters.Lock()
+	defer m.muCounters.Unlock()
+
 	if v, ok := m.counters[name]; ok {
 		return v, ok
 	} else {
@@ -126,6 +146,9 @@ func (m *MemStorage) CounterValue(name string) (int64, bool) {
 
 // CounterValueContext returns the counter metric value by name
 func (m *MemStorage) CounterValueContext(ctx context.Context, name string) (int64, bool) {
+	m.muCounters.Lock()
+	defer m.muCounters.Unlock()
+
 	if v, ok := m.counters[name]; ok {
 		return v.Value(), ok
 	}
@@ -139,6 +162,9 @@ func (m *MemStorage) Counters(filters ...StorageFilter) map[string]metrics.Count
 
 // CountersContext returns all counter metrics
 func (m *MemStorage) CountersContext(ctx context.Context, filters ...StorageFilter) map[string]metrics.Counter {
+	m.muCounters.Lock()
+	defer m.muCounters.Unlock()
+
 	f := &StorageFilters{}
 	for _, filter := range filters {
 		filter(f)
@@ -164,6 +190,9 @@ func (m *MemStorage) AddCounter(name string, value int64) error {
 }
 
 func (m *MemStorage) AddCounterContext(ctx context.Context, name string, value int64) error {
+	m.muCounters.Lock()
+	defer m.muCounters.Unlock()
+
 	if m.counters == nil {
 		m.counters = make(map[string]metrics.Counter)
 	}
@@ -185,6 +214,8 @@ func (m *MemStorage) AddCounterContext(ctx context.Context, name string, value i
 }
 
 func (m *MemStorage) ResetCounters() error {
+	m.muCounters.Lock()
+	defer m.muCounters.Unlock()
 	m.counters = make(map[string]metrics.Counter)
 	return nil
 }
@@ -255,6 +286,11 @@ func (m *MemStorage) InsertBatchContext(ctx context.Context, opts ...StorageOpti
 }
 
 func (m *MemStorage) MarshalJSON() ([]byte, error) {
+	m.muGauges.Lock()
+	m.muCounters.Lock()
+	defer m.muGauges.Unlock()
+	defer m.muCounters.Unlock()
+
 	return json.Marshal(&struct {
 		Gauges   map[string]metrics.Gauge   `json:"gauges"`
 		Counters map[string]metrics.Counter `json:"counters"`
@@ -265,6 +301,11 @@ func (m *MemStorage) MarshalJSON() ([]byte, error) {
 }
 
 func (m *MemStorage) UnmarshalJSON(data []byte) error {
+	m.muGauges.Lock()
+	m.muCounters.Lock()
+	defer m.muGauges.Unlock()
+	defer m.muCounters.Unlock()
+	
 	aux := &struct {
 		Gauges   map[string]metrics.Gauge   `json:"gauges"`
 		Counters map[string]metrics.Counter `json:"counters"`

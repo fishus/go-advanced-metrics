@@ -15,7 +15,7 @@ var ErrEmptyFilename = errors.New("filename for store metrics data is empty")
 type FileStorage struct {
 	MemStorage
 	filename string
-	muSave   sync.Mutex
+	muFile   sync.Mutex
 }
 
 func NewFileStorage(filename string) *FileStorage {
@@ -33,8 +33,12 @@ func (fs *FileStorage) SetFilename(filename string) {
 
 // Save saves metric values to a file.
 func (fs *FileStorage) Save() error {
-	fs.muSave.Lock()
-	defer fs.muSave.Unlock()
+	fs.muFile.Lock()
+	fs.muGauges.Lock()
+	fs.muCounters.Lock()
+	defer fs.muFile.Unlock()
+	defer fs.muGauges.Unlock()
+	defer fs.muCounters.Unlock()
 
 	if fs.filename == "" {
 		return ErrEmptyFilename
@@ -59,6 +63,13 @@ func (fs *FileStorage) Save() error {
 
 // Load reads metric values from a file.
 func (fs *FileStorage) Load() error {
+	fs.muFile.Lock()
+	fs.muGauges.Lock()
+	fs.muCounters.Lock()
+	defer fs.muFile.Unlock()
+	defer fs.muGauges.Unlock()
+	defer fs.muCounters.Unlock()
+
 	if fs.filename == "" {
 		return ErrEmptyFilename
 	}
