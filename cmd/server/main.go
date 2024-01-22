@@ -41,8 +41,8 @@ func main() {
 func setStorage() {
 	handlers.Config.IsSyncMetricsSave = false
 
-	dbPool, err := db.Pool()
-	if err == nil {
+	dbPool, _ := db.Pool()
+	if dbPool != nil {
 		dbStorage := storage.NewDBStorage(dbPool)
 		dbStorage.MigrateCreateSchema(context.Background())
 		handlers.SetStorage(dbStorage)

@@ -23,6 +23,34 @@ func (ds *DBStorage) SetDBPool(pool db.Connector) {
 	ds.pool = pool
 }
 
+func (ds *DBStorage) GetDBPool() (db.Connector, error) {
+	if ds.pool == nil {
+		return nil, db.ErrNotConnected
+	}
+
+	// Delay after unsuccessful request
+	retryDelay := []time.Duration{
+		1 * time.Second,
+		3 * time.Second,
+		5 * time.Second,
+		0,
+	}
+
+	var err error
+	for _, delay := range retryDelay {
+		ctx, cancel := context.WithTimeout(context.Background(), (1 * time.Second))
+		defer cancel()
+		err = ds.pool.Ping(ctx)
+
+		if err == nil || !db.IsConnectionException(err) {
+			return ds.pool, nil
+		}
+		time.Sleep(delay)
+	}
+
+	return nil, err
+}
+
 // Gauge returns the gauge metric by name
 func (ds *DBStorage) Gauge(name string) (metrics.Gauge, bool) {
 	return ds.GaugeContext(context.Background(), name)
@@ -30,16 +58,17 @@ func (ds *DBStorage) Gauge(name string) (metrics.Gauge, bool) {
 
 // GaugeContext returns the gauge metric by name
 func (ds *DBStorage) GaugeContext(ctx context.Context, name string) (metrics.Gauge, bool) {
-	if ds.pool == nil {
+	pool, err := ds.GetDBPool()
+	if err != nil {
 		return metrics.Gauge{}, false
 	}
 
 	ctxQuery, cancel := context.WithTimeout(ctx, (3 * time.Second))
 	defer cancel()
 
-	row := ds.pool.QueryRow(ctxQuery, "SELECT value FROM metrics_gauge WHERE name = $1 LIMIT 1;", name)
+	row := pool.QueryRow(ctxQuery, "SELECT value FROM metrics_gauge WHERE name = $1 LIMIT 1;", name)
 	var value float64
-	err := row.Scan(&value)
+	err = row.Scan(&value)
 	if errors.Is(err, db.ErrNoRows) {
 		return metrics.Gauge{}, false
 	}
@@ -79,7 +108,12 @@ func (ds *DBStorage) Gauges(filters ...StorageFilter) map[string]metrics.Gauge {
 func (ds *DBStorage) GaugesContext(ctx context.Context, filters ...StorageFilter) map[string]metrics.Gauge {
 	gauges := map[string]metrics.Gauge{}
 
-	if ds.pool == nil {
+	var (
+		rows db.Rows
+		err  error
+	)
+	pool, err := ds.GetDBPool()
+	if err != nil {
 		return gauges
 	}
 
@@ -91,14 +125,10 @@ func (ds *DBStorage) GaugesContext(ctx context.Context, filters ...StorageFilter
 	ctxQuery, cancel := context.WithTimeout(ctx, (3 * time.Second))
 	defer cancel()
 
-	var (
-		rows db.Rows
-		err  error
-	)
 	if len(f.names) > 0 {
-		rows, err = ds.pool.Query(ctxQuery, "SELECT name, value FROM metrics_gauge WHERE name = ANY($1);", f.names)
+		rows, err = pool.Query(ctxQuery, "SELECT name, value FROM metrics_gauge WHERE name = ANY($1);", f.names)
 	} else {
-		rows, err = ds.pool.Query(ctxQuery, "SELECT name, value FROM metrics_gauge;")
+		rows, err = pool.Query(ctxQuery, "SELECT name, value FROM metrics_gauge;")
 	}
 	if err != nil {
 		logger.Log.Warn(err.Error())
@@ -141,8 +171,9 @@ func (ds *DBStorage) SetGauge(name string, value float64) error {
 }
 
 func (ds *DBStorage) SetGaugeContext(ctx context.Context, name string, value float64) error {
-	if ds.pool == nil {
-		return db.ErrNotConnected
+	pool, err := ds.GetDBPool()
+	if err != nil {
+		return err
 	}
 
 	if _, err := metrics.NewGauge(name, value); err != nil {
@@ -152,7 +183,7 @@ func (ds *DBStorage) SetGaugeContext(ctx context.Context, name string, value flo
 	ctxQuery, cancel := context.WithTimeout(ctx, (3 * time.Second))
 	defer cancel()
 
-	_, err := ds.pool.Exec(ctxQuery, "INSERT INTO metrics_gauge (name, value) VALUES (@name, @value) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;",
+	_, err = pool.Exec(ctxQuery, "INSERT INTO metrics_gauge (name, value) VALUES (@name, @value) ON CONFLICT (name) DO UPDATE SET value = EXCLUDED.value;",
 		db.NamedArgs{"name": name, "value": value})
 	if err != nil {
 		return err
@@ -162,13 +193,14 @@ func (ds *DBStorage) SetGaugeContext(ctx context.Context, name string, value flo
 }
 
 func (ds *DBStorage) ResetGauges() error {
-	if ds.pool == nil {
-		return db.ErrNotConnected
+	pool, err := ds.GetDBPool()
+	if err != nil {
+		return err
 	}
 
 	ctx := context.Background()
 
-	_, err := ds.pool.Exec(ctx, "TRUNCATE metrics_gauge;")
+	_, err = pool.Exec(ctx, "TRUNCATE metrics_gauge;")
 	if err != nil {
 		return err
 	}
@@ -183,16 +215,17 @@ func (ds *DBStorage) Counter(name string) (metrics.Counter, bool) {
 
 // CounterContext returns the counter metric by name
 func (ds *DBStorage) CounterContext(ctx context.Context, name string) (metrics.Counter, bool) {
-	if ds.pool == nil {
+	pool, err := ds.GetDBPool()
+	if err != nil {
 		return metrics.Counter{}, false
 	}
 
 	ctxQuery, cancel := context.WithTimeout(ctx, (3 * time.Second))
 	defer cancel()
 
-	row := ds.pool.QueryRow(ctxQuery, "SELECT value FROM metrics_counter WHERE name = $1 LIMIT 1;", name)
+	row := pool.QueryRow(ctxQuery, "SELECT value FROM metrics_counter WHERE name = $1 LIMIT 1;", name)
 	var value int64
-	err := row.Scan(&value)
+	err = row.Scan(&value)
 	if errors.Is(err, db.ErrNoRows) {
 		return metrics.Counter{}, false
 	}
@@ -232,7 +265,12 @@ func (ds *DBStorage) Counters(filters ...StorageFilter) map[string]metrics.Count
 func (ds *DBStorage) CountersContext(ctx context.Context, filters ...StorageFilter) map[string]metrics.Counter {
 	counters := map[string]metrics.Counter{}
 
-	if ds.pool == nil {
+	var (
+		rows db.Rows
+		err  error
+	)
+	pool, err := ds.GetDBPool()
+	if err != nil {
 		return counters
 	}
 
@@ -244,14 +282,10 @@ func (ds *DBStorage) CountersContext(ctx context.Context, filters ...StorageFilt
 	ctxQuery, cancel := context.WithTimeout(ctx, (3 * time.Second))
 	defer cancel()
 
-	var (
-		rows db.Rows
-		err  error
-	)
 	if len(f.names) > 0 {
-		rows, err = ds.pool.Query(ctxQuery, "SELECT name, value FROM metrics_counter WHERE name = ANY($1);", f.names)
+		rows, err = pool.Query(ctxQuery, "SELECT name, value FROM metrics_counter WHERE name = ANY($1);", f.names)
 	} else {
-		rows, err = ds.pool.Query(ctxQuery, "SELECT name, value FROM metrics_counter;")
+		rows, err = pool.Query(ctxQuery, "SELECT name, value FROM metrics_counter;")
 	}
 	if err != nil {
 		logger.Log.Warn(err.Error())
@@ -294,8 +328,9 @@ func (ds *DBStorage) AddCounter(name string, value int64) error {
 }
 
 func (ds *DBStorage) AddCounterContext(ctx context.Context, name string, value int64) error {
-	if ds.pool == nil {
-		return db.ErrNotConnected
+	pool, err := ds.GetDBPool()
+	if err != nil {
+		return err
 	}
 
 	if _, err := metrics.NewCounter(name, value); err != nil {
@@ -305,7 +340,7 @@ func (ds *DBStorage) AddCounterContext(ctx context.Context, name string, value i
 	ctxQuery, cancel := context.WithTimeout(ctx, (3 * time.Second))
 	defer cancel()
 
-	_, err := ds.pool.Exec(ctxQuery, "INSERT INTO metrics_counter (name, value) VALUES (@name, @value) ON CONFLICT (name) DO UPDATE SET value = metrics_counter.value + EXCLUDED.value;",
+	_, err = pool.Exec(ctxQuery, "INSERT INTO metrics_counter (name, value) VALUES (@name, @value) ON CONFLICT (name) DO UPDATE SET value = metrics_counter.value + EXCLUDED.value;",
 		db.NamedArgs{"name": name, "value": value})
 	if err != nil {
 		return err
@@ -315,13 +350,14 @@ func (ds *DBStorage) AddCounterContext(ctx context.Context, name string, value i
 }
 
 func (ds *DBStorage) ResetCounters() error {
-	if ds.pool == nil {
-		return db.ErrNotConnected
+	pool, err := ds.GetDBPool()
+	if err != nil {
+		return err
 	}
 
 	ctx := context.Background()
 
-	_, err := ds.pool.Exec(ctx, "TRUNCATE metrics_counter;")
+	_, err = pool.Exec(ctx, "TRUNCATE metrics_counter;")
 	if err != nil {
 		return err
 	}
@@ -331,21 +367,22 @@ func (ds *DBStorage) ResetCounters() error {
 
 // MigrateCreateSchema Создать все необходимые таблицы в базе данных.
 func (ds *DBStorage) MigrateCreateSchema(ctx context.Context) {
+	pool, err := ds.GetDBPool()
+	if err != nil {
+		logger.Log.Warn(db.ErrNotConnected.Error())
+		return
+	}
+
 	dump, err := os.ReadFile(`db/migration/create_schema.sql`)
 	if err != nil {
 		logger.Log.Warn(err.Error())
 		return
 	}
 
-	if ds.pool == nil {
-		logger.Log.Warn(db.ErrNotConnected.Error())
-		return
-	}
-
 	ctxQuery, cancel := context.WithTimeout(ctx, (30 * time.Second))
 	defer cancel()
 
-	res, err := ds.pool.Exec(ctxQuery, string(dump))
+	res, err := pool.Exec(ctxQuery, string(dump))
 	if err != nil {
 		logger.Log.Warn(err.Error(), logger.String("status", res.String()))
 		return
@@ -363,6 +400,11 @@ func (ds *DBStorage) InsertBatch(opts ...StorageOption) error {
 }
 
 func (ds *DBStorage) InsertBatchContext(ctx context.Context, opts ...StorageOption) error {
+	pool, err := ds.GetDBPool()
+	if err != nil {
+		return err
+	}
+
 	o := &StorageOptions{}
 	for _, opt := range opts {
 		opt(o)
@@ -372,14 +414,10 @@ func (ds *DBStorage) InsertBatchContext(ctx context.Context, opts ...StorageOpti
 		return nil
 	}
 
-	if ds.pool == nil {
-		return db.ErrNotConnected
-	}
-
 	ctxTx, cancel := context.WithTimeout(ctx, (30 * time.Second))
 	defer cancel()
 
-	tx, err := ds.pool.Begin(ctxTx)
+	tx, err := pool.Begin(ctxTx)
 	if err != nil {
 		return err
 	}

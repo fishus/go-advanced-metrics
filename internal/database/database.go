@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -59,4 +60,19 @@ func Pool() (Connector, error) {
 		return nil, ErrNotConnected
 	}
 	return pool, nil
+}
+
+func IsConnectionException(err error) bool {
+	var connErr *pgconn.ConnectError
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &connErr) {
+		return true
+	}
+
+	if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
+		return true
+	}
+
+	return false
 }

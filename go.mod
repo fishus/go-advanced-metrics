@@ -7,6 +7,7 @@ require (
 	github.com/caarlos0/env/v10 v10.0.0
 	github.com/go-chi/chi/v5 v5.0.11
 	github.com/go-resty/resty/v2 v2.10.0
+	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.5.2
 	github.com/pashagolub/pgxmock/v3 v3.3.0
 	github.com/stretchr/testify v1.8.4
