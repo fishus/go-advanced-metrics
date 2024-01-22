@@ -5,7 +5,9 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
+	"net"
 	"runtime"
 	"time"
 
@@ -53,30 +55,8 @@ func postMetricsAtIntervals(ctx context.Context, client *resty.Client, gz *gzip.
 	ticker := time.NewTicker(config.reportInterval)
 	for {
 		<-ticker.C
-		metricsBatch := make([]metrics.Metrics, 0)
 
-		for name, counter := range data.Counters() {
-			metric := metrics.Metrics{
-				ID:    name,
-				MType: metrics.TypeCounter,
-				Delta: new(int64),
-				Value: nil,
-			}
-			*metric.Delta = counter.Value()
-			metricsBatch = append(metricsBatch, metric)
-		}
-
-		for name, gauge := range data.Gauges() {
-			metric := metrics.Metrics{
-				ID:    name,
-				MType: metrics.TypeGauge,
-				Value: new(float64),
-				Delta: nil,
-			}
-			*metric.Value = gauge.Value()
-			metricsBatch = append(metricsBatch, metric)
-		}
-		err := postUpdateMetrics(client, gz, metricsBatch)
+		err := retryPostUpdateMetrics(ctx, client, gz, data)
 		if err == nil {
 			// Reset metrics
 			_ = data.Reset()
@@ -84,7 +64,39 @@ func postMetricsAtIntervals(ctx context.Context, client *resty.Client, gz *gzip.
 	}
 }
 
-func postUpdateMetrics(client *resty.Client, gz *gzip.Writer, batch []metrics.Metrics) error {
+func packMetricsIntoBatch(data *storage.MemStorage) []metrics.Metrics {
+	batch := make([]metrics.Metrics, 0)
+
+	for name, counter := range data.Counters() {
+		metric := metrics.Metrics{
+			ID:    name,
+			MType: metrics.TypeCounter,
+			Delta: new(int64),
+			Value: nil,
+		}
+		*metric.Delta = counter.Value()
+		batch = append(batch, metric)
+	}
+
+	for name, gauge := range data.Gauges() {
+		metric := metrics.Metrics{
+			ID:    name,
+			MType: metrics.TypeGauge,
+			Value: new(float64),
+			Delta: nil,
+		}
+		*metric.Value = gauge.Value()
+		batch = append(batch, metric)
+	}
+
+	return batch
+}
+
+func postUpdateMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, batch []metrics.Metrics) error {
+	if len(batch) == 0 {
+		return nil
+	}
+
 	jsonBody, err := json.Marshal(batch)
 	if err != nil {
 		logger.Log.Error(err.Error(),
@@ -116,6 +128,7 @@ func postUpdateMetrics(client *resty.Client, gz *gzip.Writer, batch []metrics.Me
 		logger.Any("body", json.RawMessage(jsonBody)))
 
 	resp, err := client.R().
+		SetContext(ctx).
 		SetDoNotParseResponse(true).
 		SetHeader("Content-Type", "application/json; charset=utf-8").
 		SetHeader("Content-Encoding", "gzip").
@@ -148,4 +161,36 @@ func postUpdateMetrics(client *resty.Client, gz *gzip.Writer, batch []metrics.Me
 	logger.Log.Debug(`Received response from the server`, logger.String("event", "response received"), logger.Any("headers", resp.Header()), logger.Any("body", json.RawMessage(body)))
 
 	return nil
+}
+
+func retryPostUpdateMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, data *storage.MemStorage) error {
+	var err error
+	var neterr *net.OpError
+
+	// Delay after unsuccessful request
+	retryDelay := []time.Duration{
+		1 * time.Second,
+		3 * time.Second,
+		5 * time.Second,
+		0,
+	}
+
+	for _, delay := range retryDelay {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		batch := packMetricsIntoBatch(data)
+		err = postUpdateMetrics(ctx, client, gz, batch)
+
+		errors.As(err, &neterr)
+		if err == nil || !errors.Is(err, neterr) {
+			return nil
+		}
+		time.Sleep(delay)
+	}
+
+	return err
 }
