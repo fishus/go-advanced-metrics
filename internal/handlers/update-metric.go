@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"net/http"
-	"reflect"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -76,15 +75,11 @@ func UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Save metrics values into a file
-	if Config.IsSyncMetricsSave && reflect.TypeOf(storage).String() == reflect.TypeOf((*store.FileStorage)(nil)).String() {
-		err := storage.(*store.FileStorage).Save()
-		if !errors.Is(err, store.ErrEmptyFilename) {
-			if err != nil {
-				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
-			} else {
-				logger.Log.Debug("Metric values saved into file", logger.String("event", "save metrics into file"))
-			}
+	// Synchronously save metrics values into a file
+	if s, ok := storage.(store.SyncSaver); ok {
+		err := s.SyncSave()
+		if err != nil {
+			logger.Log.Error(err.Error(), logger.String("event", "synchronously save metrics into file"))
 		}
 	}
 

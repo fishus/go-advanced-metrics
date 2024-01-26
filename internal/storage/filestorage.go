@@ -14,8 +14,9 @@ var ErrEmptyFilename = errors.New("filename for store metrics data is empty")
 // FileStorage contains a set of values for all metrics and store its in file
 type FileStorage struct {
 	MemStorage
-	filename string
-	muFile   sync.Mutex
+	filename   string
+	isSyncSave bool
+	muFile     sync.Mutex
 }
 
 func NewFileStorage(filename string) *FileStorage {
@@ -31,7 +32,11 @@ func (fs *FileStorage) SetFilename(filename string) {
 	fs.filename = filename
 }
 
-// Save saves metric values to a file.
+func (fs *FileStorage) SetIsSyncSave(isSyncSave bool) {
+	fs.isSyncSave = isSyncSave
+}
+
+// Save metrics values into a file
 func (fs *FileStorage) Save() error {
 	fs.muFile.Lock()
 	fs.muGauges.Lock()
@@ -58,6 +63,14 @@ func (fs *FileStorage) Save() error {
 		return err
 	}
 
+	return nil
+}
+
+// SyncSave synchronously saves metrics to a file
+func (fs *FileStorage) SyncSave() error {
+	if fs.isSyncSave {
+		return fs.Save()
+	}
 	return nil
 }
 
@@ -93,5 +106,6 @@ func (fs *FileStorage) Load() error {
 var _ MetricsStorager = (*FileStorage)(nil)
 var _ json.Marshaler = (*FileStorage)(nil)
 var _ json.Unmarshaler = (*FileStorage)(nil)
-var _ StorageSaver = (*FileStorage)(nil)
-var _ StorageLoader = (*FileStorage)(nil)
+var _ Saver = (*FileStorage)(nil)
+var _ SyncSaver = (*FileStorage)(nil)
+var _ Loader = (*FileStorage)(nil)

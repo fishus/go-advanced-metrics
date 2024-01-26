@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"reflect"
 
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
@@ -60,15 +59,11 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		metric.Delta = nil
 	}
 
-	// Save metrics values into a file
-	if Config.IsSyncMetricsSave && reflect.TypeOf(storage).String() == reflect.TypeOf((*store.FileStorage)(nil)).String() {
-		err := storage.(*store.FileStorage).Save()
-		if !errors.Is(err, store.ErrEmptyFilename) {
-			if err != nil {
-				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
-			} else {
-				logger.Log.Debug("Metric values saved into file", logger.String("event", "save metrics into file"))
-			}
+	// Synchronously save metrics values into a file
+	if s, ok := storage.(store.SyncSaver); ok {
+		err := s.SyncSave()
+		if err != nil {
+			logger.Log.Error(err.Error(), logger.String("event", "synchronously save metrics into file"))
 		}
 	}
 

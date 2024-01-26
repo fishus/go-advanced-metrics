@@ -39,12 +39,18 @@ type MetricsStorager interface {
 	InsertBatchContext(ctx context.Context, opts ...StorageOption) error
 }
 
-// StorageSaver is an interface for save a set of metrics
-type StorageSaver interface {
+// Saver is an interface for save a set of metrics
+type Saver interface {
 	Save() error
 }
 
-// StorageLoader is an interface for load a set of metrics
-type StorageLoader interface {
+// SyncSaver is an interface for synchronous save a set of metrics into file
+type SyncSaver interface {
+	SetIsSyncSave(bool)
+	SyncSave() error
+}
+
+// Loader is an interface for load a set of metrics
+type Loader interface {
 	Load() error
 }

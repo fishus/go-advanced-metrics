@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"reflect"
 	"syscall"
 	"time"
 
@@ -39,8 +38,6 @@ func main() {
 }
 
 func setStorage() {
-	handlers.Config.IsSyncMetricsSave = false
-
 	dbPool, _ := db.Pool()
 	if dbPool != nil {
 		dbStorage := storage.NewDBStorage(dbPool)
@@ -50,10 +47,11 @@ func setStorage() {
 	}
 
 	if config.fileStoragePath != "" {
+		s := storage.NewFileStorage(config.fileStoragePath)
 		if config.storeInterval == 0 {
-			handlers.Config.IsSyncMetricsSave = true
+			s.SetIsSyncSave(true)
 		}
-		handlers.SetStorage(storage.NewFileStorage(config.fileStoragePath))
+		handlers.SetStorage(s)
 		return
 	}
 
@@ -73,28 +71,31 @@ func runServer() {
 }
 
 func loadMetricsFromFile() {
-	if !config.isReqRestore || reflect.TypeOf(handlers.Storage()).String() != reflect.TypeOf((*storage.FileStorage)(nil)).String() {
+	if !config.isReqRestore {
 		return
 	}
 
-	s := handlers.Storage().(*storage.FileStorage)
+	s, ok := handlers.Storage().(storage.Loader)
+	if !ok {
+		return
+	}
 
 	err := s.Load()
-	if !errors.Is(err, storage.ErrEmptyFilename) {
-		if err != nil {
-			logger.Log.Warn(err.Error(), logger.String("event", "load metrics from file"))
-			return
-		}
-		logger.Log.Debug("Metric values loaded from file", logger.String("event", "load metrics from file"))
+	if err != nil {
+		logger.Log.Warn(err.Error(), logger.String("event", "load metrics from file"))
+		return
 	}
 }
 
 func saveMetricsAtIntervals() {
-	if config.storeInterval <= 0 || reflect.TypeOf(handlers.Storage()).String() != reflect.TypeOf((*storage.FileStorage)(nil)).String() {
+	if config.storeInterval <= 0 {
 		return
 	}
 
-	s := handlers.Storage().(*storage.FileStorage)
+	s, ok := handlers.Storage().(storage.Saver)
+	if !ok {
+		return
+	}
 
 	now := time.Now()
 	storeAfter := now.Add(config.storeInterval)
@@ -103,12 +104,8 @@ func saveMetricsAtIntervals() {
 		if now.After(storeAfter) {
 			storeAfter = now.Add(config.storeInterval)
 			err := s.Save()
-			if !errors.Is(err, storage.ErrEmptyFilename) {
-				if err != nil {
-					logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
-				} else {
-					logger.Log.Debug("Metric values saved into file", logger.String("event", "save metrics into file"))
-				}
+			if err != nil {
+				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
 			}
 		}
 		time.Sleep(1 * time.Second)
@@ -122,15 +119,10 @@ func saveMetricsOnExit(server *http.Server) {
 	sig := <-termSig
 	logger.Log.Debug("Server interrupt signal caught", logger.String("event", "stop server"), logger.String("signal", sig.String()))
 
-	if reflect.TypeOf(handlers.Storage()).String() == reflect.TypeOf((*storage.FileStorage)(nil)).String() {
-		s := handlers.Storage().(*storage.FileStorage)
+	if s, ok := handlers.Storage().(storage.Saver); ok {
 		err := s.Save()
-		if !errors.Is(err, storage.ErrEmptyFilename) {
-			if err != nil {
-				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
-			} else {
-				logger.Log.Debug("Metric values saved into file", logger.String("event", "save metrics into file"))
-			}
+		if err != nil {
+			logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
 		}
 	}
 
