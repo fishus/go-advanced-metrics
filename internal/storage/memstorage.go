@@ -134,9 +134,8 @@ func (m *MemStorage) CounterContext(ctx context.Context, name string) (metrics.C
 
 	if v, ok := m.counters[name]; ok {
 		return v, ok
-	} else {
-		return metrics.Counter{}, false
 	}
+	return metrics.Counter{}, false
 }
 
 // CounterValue returns the counter metric value by name
