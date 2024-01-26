@@ -35,26 +35,19 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		cMap := map[string]bool{}
 
 		for _, metric := range metricsBatch {
-			if metric.ID == "" {
-				JSONError(w, `Metric name not specified`, http.StatusNotFound)
-				logger.Log.Debug(`Metric name not specified`)
-				return
-			}
-
-			if metric.MType == "" {
-				JSONError(w, `Metric type not specified`, http.StatusBadRequest)
-				logger.Log.Debug(`Metric type not specified`)
+			if err := validateInputMetric(metric); err != nil {
+				var ve *ValidMetricError
+				if errors.As(err, &ve) {
+					JSONError(w, ve.Error(), ve.HTTPCode)
+					logger.Log.Debug(ve.Error(), logger.Any("metric", metric))
+				} else {
+					JSONError(w, err.Error(), http.StatusInternalServerError)
+				}
 				return
 			}
 
 			switch metric.MType {
 			case metrics.TypeCounter:
-				if metric.Delta == nil {
-					JSONError(w, `Incorrect counter value`, http.StatusBadRequest)
-					logger.Log.Debug(`Incorrect counter value`, logger.Any("metric", metric))
-					return
-				}
-
 				c, err := metrics.NewCounter(metric.ID, *metric.Delta)
 				if err != nil {
 					JSONError(w, err.Error(), http.StatusBadRequest)
@@ -68,12 +61,6 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 					cNames = append(cNames, c.Name())
 				}
 			case metrics.TypeGauge:
-				if metric.Value == nil {
-					JSONError(w, `Incorrect gauge value`, http.StatusBadRequest)
-					logger.Log.Debug(`Incorrect gauge value`, logger.Any("metric", metric))
-					return
-				}
-
 				g, err := metrics.NewGauge(metric.ID, *metric.Value)
 				if err != nil {
 					JSONError(w, err.Error(), http.StatusBadRequest)
@@ -85,10 +72,6 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 					gMap[g.Name()] = true
 					gNames = append(gNames, g.Name())
 				}
-			default:
-				JSONError(w, `Incorrect metric type`, http.StatusBadRequest)
-				logger.Log.Debug(`Incorrect metric type`, logger.String("type", metric.MType))
-				return
 			}
 		}
 	}

@@ -20,9 +20,9 @@ func ServerRouter() chi.Router {
 
 	r.Post("/update/", UpdateMetricsHandler)
 	r.Post("/updates/", UpdatesMetricsHandler)
-	r.Post("/update/{metricType}/{metricName}/{metricValue}", UpdateMetricHandler)
+	r.Post("/update/{metricType}/{metricID}/{metricValue}", UpdateMetricHandler)
 	r.Post("/value/", ValueMetricsHandler)
-	r.Get("/value/{metricType}/{metricName}", ValueMetricHandler)
+	r.Get("/value/{metricType}/{metricID}", ValueMetricHandler)
 	r.Get("/", ListHandler)
 	r.Get("/ping", PingDBHandler)
 	return r

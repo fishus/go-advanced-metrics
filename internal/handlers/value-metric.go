@@ -14,10 +14,10 @@ import (
 
 // ValueMetricHandler returns metrics data
 func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
-	var metricType, metricName string
+	var metricType, metricID string
 
 	metricType = chi.URLParam(r, "metricType")
-	metricName = chi.URLParam(r, "metricName")
+	metricID = chi.URLParam(r, "metricID")
 
 	// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
 	if metricType == "" {
@@ -26,17 +26,17 @@ func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// При попытке передать запрос без имени метрики возвращать http.StatusNotFound.
-	if metricName == "" {
+	if metricID == "" {
 		http.Error(w, `Metric name not specified`, http.StatusNotFound)
 		return
 	}
 
 	switch metricType {
 	case metrics.TypeCounter:
-		Counter, ok := storage.CounterContext(r.Context(), metricName)
+		Counter, ok := storage.CounterContext(r.Context(), metricID)
 		if !ok {
 			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
-			http.Error(w, fmt.Sprintf(`Counter '%s' not found`, metricName), http.StatusNotFound)
+			http.Error(w, fmt.Sprintf(`Counter '%s' not found`, metricID), http.StatusNotFound)
 			return
 		}
 
@@ -48,10 +48,10 @@ func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case metrics.TypeGauge:
-		Gauge, ok := storage.GaugeContext(r.Context(), metricName)
+		Gauge, ok := storage.GaugeContext(r.Context(), metricID)
 		if !ok {
 			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
-			http.Error(w, fmt.Sprintf(`Gauge '%s' not found`, metricName), http.StatusNotFound)
+			http.Error(w, fmt.Sprintf(`Gauge '%s' not found`, metricID), http.StatusNotFound)
 			return
 		}
 

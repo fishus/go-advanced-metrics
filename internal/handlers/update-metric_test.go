@@ -99,7 +99,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 			name:   "Negative case: Wrong url #7",
 			method: http.MethodPost,
 			url:    "/update///1",
-			status: http.StatusBadRequest,
+			status: http.StatusNotFound,
 		},
 		{
 			name:   "Negative case: Wrong url #8",
