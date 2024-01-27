@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -16,6 +17,7 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/collector"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
+	"github.com/fishus/go-advanced-metrics/internal/secure"
 	"github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
@@ -91,6 +93,12 @@ func postUpdateMetrics(ctx context.Context, client *resty.Client, gz *gzip.Write
 		return err
 	}
 
+	var hashString string
+	if config.secretKey != "" {
+		hash := secure.Hash(jsonBody, []byte(config.secretKey))
+		hashString = hex.EncodeToString(hash[:])
+	}
+
 	buf := bytes.NewBuffer(nil)
 	gz.Reset(buf)
 	_, err = gz.Write(jsonBody)
@@ -113,14 +121,19 @@ func postUpdateMetrics(ctx context.Context, client *resty.Client, gz *gzip.Write
 		logger.String("addr", config.serverAddr),
 		logger.Any("body", json.RawMessage(jsonBody)))
 
-	resp, err := client.R().
+	req := client.R().
 		SetContext(ctx).
 		SetDoNotParseResponse(true).
 		SetHeader("Content-Type", "application/json; charset=utf-8").
 		SetHeader("Content-Encoding", "gzip").
 		SetHeader("Accept-Encoding", "gzip").
-		SetBody(buf).
-		Post("updates/")
+		SetBody(buf)
+
+	if hashString != "" {
+		req.SetHeader("HashSHA256", hashString)
+	}
+
+	resp, err := req.Post("updates/")
 
 	if err != nil {
 		logger.Log.Error(err.Error(),
