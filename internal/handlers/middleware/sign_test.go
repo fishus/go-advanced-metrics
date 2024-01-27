@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"encoding/hex"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,19 +14,21 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/secure"
 )
 
-type ValidateSignSuite struct {
+type SignSuite struct {
 	suite.Suite
 	ts     *httptest.Server
 	client *resty.Client
 }
 
-func (s *ValidateSignSuite) SetupSuite() {
+func (s *SignSuite) SetupSuite() {
 	r := chi.NewRouter()
-	r.Use(ValidateSign([]byte("secret")))
+	r.Use(Sign([]byte("secret")))
 
 	r.Post("/test/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
+		_, err := io.Copy(w, r.Body)
+		s.Require().NoError(err)
 		defer r.Body.Close()
 	})
 
@@ -33,14 +36,13 @@ func (s *ValidateSignSuite) SetupSuite() {
 	s.client = resty.New().SetBaseURL(s.ts.URL)
 }
 
-func (s *ValidateSignSuite) TearDownSuite() {
+func (s *SignSuite) TearDownSuite() {
 	s.ts.Close()
 }
 
-func (s *ValidateSignSuite) sendRequest(hashString string, data []byte) *resty.Response {
+func (s *SignSuite) sendRequest(data []byte) *resty.Response {
 	req := s.client.R().SetBody(data).
-		SetHeader("Content-Type", "text/plain; charset=utf-8").
-		SetHeader("HashSHA256", hashString)
+		SetHeader("Content-Type", "text/plain; charset=utf-8")
 
 	resp, err := req.Post("test/")
 	s.Require().NoError(err)
@@ -48,53 +50,32 @@ func (s *ValidateSignSuite) sendRequest(hashString string, data []byte) *resty.R
 	return resp
 }
 
-func (s *ValidateSignSuite) TestValidateSign() {
+func (s *SignSuite) TestSign() {
 	testCases := []struct {
-		name       string
-		hashString func(data []byte) string
-		wantCode   int
+		name     string
+		data     string
+		wantHash func(data []byte) string
 	}{
 		{
 			name: "Positive",
-			hashString: func(data []byte) string {
+			data: `Аэрофотосъёмка ландшафта уже выявила земли богачей и процветающих крестьян.`,
+			wantHash: func(data []byte) string {
 				hash := secure.Hash(data, []byte("secret"))
 				return hex.EncodeToString(hash[:])
 			},
-			wantCode: http.StatusOK,
-		},
-		{
-			name: "Negative: wrong secret",
-			hashString: func(data []byte) string {
-				hash := secure.Hash(data, []byte("key"))
-				return hex.EncodeToString(hash[:])
-			},
-			wantCode: http.StatusBadRequest,
-		},
-		{
-			name: "Negative: wrong hash",
-			hashString: func(data []byte) string {
-				return "12345abc"
-			},
-			wantCode: http.StatusBadRequest,
-		},
-		{
-			name: "Negative: empty hash",
-			hashString: func(data []byte) string {
-				return ""
-			},
-			wantCode: http.StatusBadRequest,
 		},
 	}
 
 	for _, tc := range testCases {
 		s.Run(tc.name, func() {
-			data := []byte(`Аэрофотосъёмка ландшафта уже выявила земли богачей и процветающих крестьян.`)
-			resp := s.sendRequest(tc.hashString(data), data)
-			s.Equal(tc.wantCode, resp.StatusCode())
+			data := []byte(tc.data)
+			resp := s.sendRequest(data)
+			respHashString := resp.Header().Get("HashSHA256")
+			s.Equal(tc.wantHash(data), respHashString)
 		})
 	}
 }
 
-func TestValidateSignSuite(t *testing.T) {
-	suite.Run(t, new(ValidateSignSuite))
+func TestSignSuite(t *testing.T) {
+	suite.Run(t, new(SignSuite))
 }

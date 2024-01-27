@@ -20,6 +20,7 @@ func ServerRouter() chi.Router {
 
 	if secretKey != "" {
 		r.Use(mw.ValidateSign([]byte(secretKey)))
+		r.Use(mw.Sign([]byte(secretKey)))
 	}
 
 	r.Post("/update/", UpdateMetricsHandler)
