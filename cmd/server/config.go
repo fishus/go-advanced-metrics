@@ -8,6 +8,7 @@ type Config struct {
 	fileStoragePath string        // Полное имя файла, куда сохраняются текущие значения
 	isReqRestore    bool          // Загружать ранее сохранённые значения из файла при старте сервера
 	databaseDSN     string        // Строка подключения к БД
+	secretKey       string        // Ключ для подписи данных
 	logLevel        string
 }
 
@@ -62,5 +63,14 @@ func (c Config) DatabaseDSN() string {
 
 func (c Config) SetDatabaseDSN(dsn string) Config {
 	c.databaseDSN = dsn
+	return c
+}
+
+func (c Config) SecretKey() string {
+	return c.secretKey
+}
+
+func (c Config) SetSecretKey(key string) Config {
+	c.secretKey = key
 	return c
 }

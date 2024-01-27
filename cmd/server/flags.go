@@ -37,6 +37,9 @@ func parseFlags(config Config) Config {
 	// Флаг -d=<ЗНАЧЕНИЕ> - строка подключения к БД
 	databaseDSN := flag.String("d", "", "database URL")
 
+	// Флаг -k=<КЛЮЧ> Ключ для подписи данных
+	secretKey := flag.String("k", "", "Secret key for signing data")
+
 	flag.Parse()
 
 	return config.
@@ -44,7 +47,8 @@ func parseFlags(config Config) Config {
 		SetStoreIntervalInSeconds(*storeInterval).
 		SetFileStoragePath(*fileStoragePath).
 		SetIsReqRestore(*isReqRestore).
-		SetDatabaseDSN(*databaseDSN)
+		SetDatabaseDSN(*databaseDSN).
+		SetSecretKey(*secretKey)
 }
 
 func parseEnvs(config Config) Config {
@@ -54,6 +58,7 @@ func parseEnvs(config Config) Config {
 		FileStoragePath string `env:"FILE_STORAGE_PATH"`
 		IsReqRestore    bool   `env:"RESTORE"`
 		DatabaseDSN     string `env:"DATABASE_DSN"`
+		SecretKey       string `env:"KEY"`
 	}
 	err := env.Parse(&cfg)
 	if err != nil {
@@ -78,6 +83,9 @@ func parseEnvs(config Config) Config {
 
 	if _, exists := os.LookupEnv("DATABASE_DSN"); exists {
 		config = config.SetDatabaseDSN(cfg.DatabaseDSN)
+	}
+	if _, exists := os.LookupEnv("KEY"); exists {
+		config = config.SetSecretKey(cfg.SecretKey)
 	}
 
 	return config

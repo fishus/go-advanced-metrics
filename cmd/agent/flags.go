@@ -29,12 +29,16 @@ func parseFlags(config Config) Config {
 	// Флаг -r=<ЗНАЧЕНИЕ> позволяет переопределять reportInterval — частоту отправки метрик на сервер (по умолчанию 10 секунд).
 	reportInterval := flag.Uint("r", 10, "frequency of sending metrics to the server (in seconds)")
 
+	// Флаг -k=<КЛЮЧ> Ключ для подписи данных
+	secretKey := flag.String("k", "", "Secret key for signing data")
+
 	flag.Parse()
 
 	return config.
 		SetServerAddr(*serverAddr).
 		SetPollIntervalInSeconds(*pollInterval).
-		SetReportIntervalInSeconds(*reportInterval)
+		SetReportIntervalInSeconds(*reportInterval).
+		SetSecretKey(*secretKey)
 }
 
 func parseEnvs(config Config) Config {
@@ -42,6 +46,7 @@ func parseEnvs(config Config) Config {
 		ServerAddr     string `env:"ADDRESS"`
 		PollInterval   uint   `env:"POLL_INTERVAL"`
 		ReportInterval uint   `env:"REPORT_INTERVAL"`
+		SecretKey      string `env:"KEY"`
 	}
 	err := env.Parse(&cfg)
 	if err != nil {
@@ -56,6 +61,9 @@ func parseEnvs(config Config) Config {
 	}
 	if _, exists := os.LookupEnv("REPORT_INTERVAL"); exists {
 		config = config.SetReportIntervalInSeconds(cfg.ReportInterval)
+	}
+	if _, exists := os.LookupEnv("KEY"); exists {
+		config = config.SetSecretKey(cfg.SecretKey)
 	}
 
 	return config
