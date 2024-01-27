@@ -43,9 +43,7 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		counterValue, _ := storage.CounterValueContext(r.Context(), metric.ID)
-		metric.Delta = new(int64)
-		*metric.Delta = counterValue
-		metric.Value = nil
+		metric = metric.SetDelta(counterValue)
 	case metrics.TypeGauge:
 		err := storage.SetGaugeContext(r.Context(), metric.ID, *metric.Value)
 		if err != nil {
@@ -54,9 +52,7 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		gaugeValue, _ := storage.GaugeValueContext(r.Context(), metric.ID)
-		metric.Value = new(float64)
-		*metric.Value = gaugeValue
-		metric.Delta = nil
+		metric = metric.SetValue(gaugeValue)
 	}
 
 	// Synchronously save metrics values into a file

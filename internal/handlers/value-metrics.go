@@ -44,9 +44,7 @@ func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 			logger.Log.Debug(fmt.Sprintf(`Counter '%s' not found`, metric.ID), logger.Any("metric", metric))
 			return
 		}
-		metric.Delta = new(int64)
-		*metric.Delta = counterValue
-		metric.Value = nil
+		metric = metric.SetDelta(counterValue)
 	case metrics.TypeGauge:
 		gaugeValue, ok := storage.GaugeValueContext(r.Context(), metric.ID)
 		if !ok {
@@ -55,9 +53,7 @@ func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 			logger.Log.Debug(fmt.Sprintf(`Gauge '%s' not found`, metric.ID), logger.Any("metric", metric))
 			return
 		}
-		metric.Value = new(float64)
-		*metric.Value = gaugeValue
-		metric.Delta = nil
+		metric = metric.SetValue(gaugeValue)
 	default:
 		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
 		JSONError(w, `Incorrect metric type`, http.StatusBadRequest)

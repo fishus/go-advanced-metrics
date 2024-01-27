@@ -75,7 +75,7 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		counters := storage.CountersContext(r.Context(), store.FilterNames(names))
 		for _, cn := range names {
 			if c, ok := counters[cn]; ok {
-				metricsBatch = append(metricsBatch, convCounterToMetric(c))
+				metricsBatch = append(metricsBatch, metrics.NewCounterMetric(c.Name()).SetDelta(c.Value()))
 			}
 		}
 	}
@@ -84,7 +84,7 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		gauges := storage.GaugesContext(r.Context(), store.FilterNames(names))
 		for _, cn := range names {
 			if g, ok := gauges[cn]; ok {
-				metricsBatch = append(metricsBatch, convGaugeToMetric(g))
+				metricsBatch = append(metricsBatch, metrics.NewGaugeMetric(g.Name()).SetValue(g.Value()))
 			}
 		}
 	}
@@ -132,24 +132,4 @@ func getBatchCounterNames(batch []metrics.Counter) []string {
 	}
 
 	return names
-}
-
-func convCounterToMetric(m metrics.Counter) metrics.Metrics {
-	metric := metrics.Metrics{
-		ID:    m.Name(),
-		MType: metrics.TypeCounter,
-		Delta: new(int64),
-	}
-	*metric.Delta = m.Value()
-	return metric
-}
-
-func convGaugeToMetric(m metrics.Gauge) metrics.Metrics {
-	metric := metrics.Metrics{
-		ID:    m.Name(),
-		MType: metrics.TypeGauge,
-		Value: new(float64),
-	}
-	*metric.Value = m.Value()
-	return metric
 }

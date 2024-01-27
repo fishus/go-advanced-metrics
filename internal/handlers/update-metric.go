@@ -22,28 +22,15 @@ func UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch metric.MType {
 	case metrics.TypeCounter:
-		metric.Value = nil
-
 		v := chi.URLParam(r, "metricValue")
-		if v == "" {
-			metric.Delta = nil
-		} else if i, err := strconv.ParseInt(v, 10, 64); err != nil {
-			metric.Delta = nil
-		} else {
-			metric.Delta = new(int64)
-			*metric.Delta = i
+		if delta, err := strconv.ParseInt(v, 10, 64); v != "" && err == nil {
+			metric = metric.SetDelta(delta)
 		}
-	case metrics.TypeGauge:
-		metric.Delta = nil
 
+	case metrics.TypeGauge:
 		v := chi.URLParam(r, "metricValue")
-		if v == "" {
-			metric.Value = nil
-		} else if f, err := strconv.ParseFloat(v, 64); err != nil {
-			metric.Value = nil
-		} else {
-			metric.Value = new(float64)
-			*metric.Value = f
+		if val, err := strconv.ParseFloat(v, 64); v != "" && err == nil {
+			metric = metric.SetValue(val)
 		}
 	}
 

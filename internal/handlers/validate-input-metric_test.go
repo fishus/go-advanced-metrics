@@ -21,48 +21,24 @@ func TestValidateInputMetric(t *testing.T) {
 		want   want
 	}{
 		{
-			name: "Positive case: counter",
-			metric: metrics.Metrics{
-				ID:    "PollCount",
-				MType: "counter",
-				Delta: func() *int64 {
-					v := new(int64)
-					*v = 2
-					return v
-				}(),
-			},
+			name:   "Positive case: counter",
+			metric: metrics.NewCounterMetric("PollCount").SetDelta(2),
 			want: want{
 				httpCode: 0,
 				wantErr:  false,
 			},
 		},
 		{
-			name: "Positive case: gauge",
-			metric: metrics.Metrics{
-				ID:    "RandomValue",
-				MType: "gauge",
-				Value: func() *float64 {
-					v := new(float64)
-					*v = 1.23
-					return v
-				}(),
-			},
+			name:   "Positive case: gauge",
+			metric: metrics.NewGaugeMetric("RandomValue").SetValue(1.23),
 			want: want{
 				httpCode: 0,
 				wantErr:  false,
 			},
 		},
 		{
-			name: "Negative case: ID",
-			metric: metrics.Metrics{
-				ID:    "",
-				MType: "gauge",
-				Value: func() *float64 {
-					v := new(float64)
-					*v = 1.23
-					return v
-				}(),
-			},
+			name:   "Negative case: ID",
+			metric: metrics.NewGaugeMetric("").SetValue(1.23),
 			want: want{
 				httpCode: http.StatusNotFound,
 				wantErr:  true,
@@ -101,22 +77,16 @@ func TestValidateInputMetric(t *testing.T) {
 			},
 		},
 		{
-			name: "Negative case: empty delta",
-			metric: metrics.Metrics{
-				ID:    "PollCount",
-				MType: "counter",
-			},
+			name:   "Negative case: empty delta",
+			metric: metrics.NewCounterMetric("PollCount"),
 			want: want{
 				httpCode: http.StatusBadRequest,
 				wantErr:  true,
 			},
 		},
 		{
-			name: "Negative case: empty value",
-			metric: metrics.Metrics{
-				ID:    "RandomValue",
-				MType: "gauge",
-			},
+			name:   "Negative case: empty value",
+			metric: metrics.NewGaugeMetric("PollCount"),
 			want: want{
 				httpCode: http.StatusBadRequest,
 				wantErr:  true,

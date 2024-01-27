@@ -67,26 +67,12 @@ func postMetricsAtIntervals(ctx context.Context, client *resty.Client, gz *gzip.
 func packMetricsIntoBatch(data *storage.MemStorage) []metrics.Metrics {
 	batch := make([]metrics.Metrics, 0)
 
-	for name, counter := range data.Counters() {
-		metric := metrics.Metrics{
-			ID:    name,
-			MType: metrics.TypeCounter,
-			Delta: new(int64),
-			Value: nil,
-		}
-		*metric.Delta = counter.Value()
-		batch = append(batch, metric)
+	for _, counter := range data.Counters() {
+		batch = append(batch, metrics.NewCounterMetric(counter.Name()).SetDelta(counter.Value()))
 	}
 
-	for name, gauge := range data.Gauges() {
-		metric := metrics.Metrics{
-			ID:    name,
-			MType: metrics.TypeGauge,
-			Value: new(float64),
-			Delta: nil,
-		}
-		*metric.Value = gauge.Value()
-		batch = append(batch, metric)
+	for _, gauge := range data.Gauges() {
+		batch = append(batch, metrics.NewGaugeMetric(gauge.Name()).SetValue(gauge.Value()))
 	}
 
 	return batch
