@@ -59,6 +59,7 @@ func setStorage() {
 }
 
 func runServer() {
+	handlers.SetSecretKey(config.secretKey)
 	server := &http.Server{Addr: config.serverAddr, Handler: handlers.ServerRouter()}
 
 	go saveMetricsOnExit(server)

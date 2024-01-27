@@ -13,3 +13,13 @@ func Storage() store.MetricsStorager {
 func SetStorage(s store.MetricsStorager) {
 	storage = s
 }
+
+var secretKey string
+
+func SecretKey() string {
+	return secretKey
+}
+
+func SetSecretKey(key string) {
+	secretKey = key
+}
