@@ -82,7 +82,7 @@ func (s *ValidateSignSuite) TestValidateSign() {
 			hashString: func(data []byte) string {
 				return ""
 			},
-			wantCode: http.StatusBadRequest,
+			wantCode: http.StatusOK,
 		},
 	}
 

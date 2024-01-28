@@ -19,7 +19,7 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 		JSONError(w, err.Error(), http.StatusBadRequest)
-		logger.Log.Debug(err.Error(), logger.Any("body", r.Body))
+		logger.Log.Debug(err.Error())
 		return
 	}
 

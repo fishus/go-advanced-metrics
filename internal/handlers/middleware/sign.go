@@ -13,8 +13,12 @@ import (
 func Sign(key []byte) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			sign := secure.NewSign(key)
+			if len(key) == 0 {
+				next.ServeHTTP(w, r)
+				return
+			}
 
+			sign := secure.NewSign(key)
 			hw := &signWriter{ResponseWriter: w, Sign: sign, Buf: &bytes.Buffer{}}
 			defer hw.Close()
 
