@@ -13,14 +13,7 @@ import (
 func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	type Metrics struct {
-		ID    string   `json:"id"`              // имя метрики
-		MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-		Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-		Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
-	}
-
-	var metric Metrics
+	var metric metrics.Metrics
 
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 		JSONError(w, err.Error(), http.StatusBadRequest)
@@ -44,27 +37,23 @@ func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch metric.MType {
 	case metrics.TypeCounter:
-		counterValue, ok := storage.CounterValue(metric.ID)
+		counterValue, ok := storage.CounterValueContext(r.Context(), metric.ID)
 		if !ok {
 			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
 			JSONError(w, fmt.Sprintf(`Counter '%s' not found`, metric.ID), http.StatusNotFound)
 			logger.Log.Debug(fmt.Sprintf(`Counter '%s' not found`, metric.ID), logger.Any("metric", metric))
 			return
 		}
-		metric.Delta = new(int64)
-		*metric.Delta = counterValue
-		metric.Value = nil
+		metric = metric.SetDelta(counterValue)
 	case metrics.TypeGauge:
-		gaugeValue, ok := storage.GaugeValue(metric.ID)
+		gaugeValue, ok := storage.GaugeValueContext(r.Context(), metric.ID)
 		if !ok {
 			// При попытке запроса неизвестной метрики сервер должен возвращать http.StatusNotFound.
 			JSONError(w, fmt.Sprintf(`Gauge '%s' not found`, metric.ID), http.StatusNotFound)
 			logger.Log.Debug(fmt.Sprintf(`Gauge '%s' not found`, metric.ID), logger.Any("metric", metric))
 			return
 		}
-		metric.Value = new(float64)
-		*metric.Value = gaugeValue
-		metric.Delta = nil
+		metric = metric.SetValue(gaugeValue)
 	default:
 		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
 		JSONError(w, `Incorrect metric type`, http.StatusBadRequest)

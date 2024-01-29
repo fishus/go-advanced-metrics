@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/fishus/go-advanced-metrics/internal/metrics"
+	"github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
 func TestSetMetricGauge(t *testing.T) {
@@ -14,21 +14,21 @@ func TestSetMetricGauge(t *testing.T) {
 		name    string
 		key     string
 		value   float64
-		data    func() *metrics.MemStorage
-		want    func() *metrics.MemStorage
+		data    func() *storage.MemStorage
+		want    func() *storage.MemStorage
 		wantErr bool
 	}{
 		{
 			name:  "Positive case #1",
 			key:   "a",
 			value: 5.0,
-			data: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			data: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.SetGauge("a", 1.0)
 				return data
 			},
-			want: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			want: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.SetGauge("a", 5.0)
 				return data
 			},
@@ -38,13 +38,13 @@ func TestSetMetricGauge(t *testing.T) {
 			name:  "Positive case #2",
 			key:   "a",
 			value: -5.0,
-			data: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			data: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.SetGauge("a", 1.0)
 				return data
 			},
-			want: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			want: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.SetGauge("a", -5.0)
 				return data
 			},
@@ -54,11 +54,11 @@ func TestSetMetricGauge(t *testing.T) {
 			name:  "Positive case #3",
 			key:   "a",
 			value: 1.0,
-			data: func() *metrics.MemStorage {
-				return metrics.NewMemStorage()
+			data: func() *storage.MemStorage {
+				return storage.NewMemStorage()
 			},
-			want: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			want: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.SetGauge("a", 1.0)
 				return data
 			},
@@ -68,13 +68,13 @@ func TestSetMetricGauge(t *testing.T) {
 			name:  "Positive case #4",
 			key:   "b",
 			value: 3.0,
-			data: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			data: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.SetGauge("a", 1.0)
 				return data
 			},
-			want: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			want: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.SetGauge("a", 1.0)
 				_ = data.SetGauge("b", 3.0)
 				return data
@@ -85,10 +85,10 @@ func TestSetMetricGauge(t *testing.T) {
 			name:  "Negative case #1",
 			key:   "a",
 			value: 5.0,
-			data: func() *metrics.MemStorage {
+			data: func() *storage.MemStorage {
 				return nil
 			},
-			want: func() *metrics.MemStorage {
+			want: func() *storage.MemStorage {
 				return nil
 			},
 			wantErr: true,
@@ -114,21 +114,21 @@ func TestAddMetricCounter(t *testing.T) {
 		name    string
 		key     string
 		value   int64
-		data    func() *metrics.MemStorage
-		want    func() *metrics.MemStorage
+		data    func() *storage.MemStorage
+		want    func() *storage.MemStorage
 		wantErr bool
 	}{
 		{
 			name:  "Positive case #1",
 			key:   "a",
 			value: 1,
-			data: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			data: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.AddCounter("a", 2)
 				return data
 			},
-			want: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			want: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.AddCounter("a", 3)
 				return data
 			},
@@ -138,11 +138,11 @@ func TestAddMetricCounter(t *testing.T) {
 			name:  "Positive case #2",
 			key:   "a",
 			value: 1,
-			data: func() *metrics.MemStorage {
-				return metrics.NewMemStorage()
+			data: func() *storage.MemStorage {
+				return storage.NewMemStorage()
 			},
-			want: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			want: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.AddCounter("a", 1)
 				return data
 			},
@@ -152,13 +152,13 @@ func TestAddMetricCounter(t *testing.T) {
 			name:  "Positive case #3",
 			key:   "b",
 			value: 1,
-			data: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			data: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.AddCounter("a", 2)
 				return data
 			},
-			want: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			want: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.AddCounter("a", 2)
 				_ = data.AddCounter("b", 1)
 				return data
@@ -169,13 +169,13 @@ func TestAddMetricCounter(t *testing.T) {
 			name:  "Negative case #1",
 			key:   "a",
 			value: -1,
-			data: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			data: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.AddCounter("a", 2)
 				return data
 			},
-			want: func() *metrics.MemStorage {
-				data := metrics.NewMemStorage()
+			want: func() *storage.MemStorage {
+				data := storage.NewMemStorage()
 				_ = data.AddCounter("a", 2)
 				return data
 			},
@@ -185,10 +185,10 @@ func TestAddMetricCounter(t *testing.T) {
 			name:  "Negative case #2",
 			key:   "a",
 			value: 1,
-			data: func() *metrics.MemStorage {
+			data: func() *storage.MemStorage {
 				return nil
 			},
-			want: func() *metrics.MemStorage {
+			want: func() *storage.MemStorage {
 				return nil
 			},
 			wantErr: true,

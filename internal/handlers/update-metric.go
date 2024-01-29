@@ -9,78 +9,64 @@ import (
 
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
+	store "github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
-// UpdateMetricHandler processes a request like POST /update/{metricType}/{metricName}/{metricValue}
+// UpdateMetricHandler processes a request like POST /update/{metricType}/{metricID}/{metricValue}
 // Stores metric data by type and name
 func UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
-	var metricType, metricName string
+	var metric metrics.Metrics
 
-	metricType = chi.URLParam(r, "metricType")
-	metricName = chi.URLParam(r, "metricName")
+	metric.ID = chi.URLParam(r, "metricID")
+	metric.MType = chi.URLParam(r, "metricType")
 
-	// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
-	if metricType == "" {
-		http.Error(w, `Metric type not specified`, http.StatusBadRequest)
-		return
-	}
-
-	// При попытке передать запрос без имени метрики возвращать http.StatusNotFound.
-	if metricName == "" {
-		http.Error(w, `Metric name not specified`, http.StatusNotFound)
-		return
-	}
-
-	switch metricType {
+	switch metric.MType {
 	case metrics.TypeCounter:
-		var metricValue int64
-
 		v := chi.URLParam(r, "metricValue")
-
-		if i, err := strconv.ParseInt(v, 10, 64); err != nil || v == "" {
-			http.Error(w, `Incorrect metric value`, http.StatusBadRequest)
-			return
-		} else {
-			metricValue = i
+		if delta, err := strconv.ParseInt(v, 10, 64); v != "" && err == nil {
+			metric = metric.SetDelta(delta)
 		}
 
-		err := storage.AddCounter(metricName, metricValue)
+	case metrics.TypeGauge:
+		v := chi.URLParam(r, "metricValue")
+		if val, err := strconv.ParseFloat(v, 64); v != "" && err == nil {
+			metric = metric.SetValue(val)
+		}
+	}
+
+	if err := validateInputMetric(metric); err != nil {
+		var ve *ValidMetricError
+		if errors.As(err, &ve) {
+			JSONError(w, ve.Error(), ve.HTTPCode)
+			logger.Log.Debug(ve.Error(), logger.Any("metric", metric))
+		} else {
+			JSONError(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	switch metric.MType {
+	case metrics.TypeCounter:
+		err := storage.AddCounterContext(r.Context(), metric.ID, *metric.Delta)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			logger.Log.Debug(err.Error(), logger.Any("metric", metric))
 			return
 		}
 	case metrics.TypeGauge:
-		var metricValue float64
-
-		v := chi.URLParam(r, "metricValue")
-
-		if i, err := strconv.ParseFloat(v, 64); err != nil || v == "" {
-			http.Error(w, `Incorrect metric value`, http.StatusBadRequest)
-			return
-		} else {
-			metricValue = i
-		}
-
-		err := storage.SetGauge(metricName, metricValue)
+		err := storage.SetGaugeContext(r.Context(), metric.ID, *metric.Value)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			logger.Log.Debug(err.Error(), logger.Any("metric", metric))
 			return
 		}
-	default:
-		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
-		http.Error(w, `Incorrect metric type`, http.StatusBadRequest)
-		return
 	}
 
-	// Save metrics values into a file
-	if Config.IsSyncMetricsSave {
-		err := storage.Save()
-		if !errors.Is(err, metrics.ErrEmptyFilename) {
-			if err != nil {
-				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
-			} else {
-				logger.Log.Debug("Metric values saved into file", logger.String("event", "save metrics into file"))
-			}
+	// Synchronously save metrics values into a file
+	if s, ok := storage.(store.SyncSaver); ok {
+		err := s.SyncSave()
+		if err != nil {
+			logger.Log.Error(err.Error(), logger.String("event", "synchronously save metrics into file"))
 		}
 	}
 

@@ -5,10 +5,10 @@ import (
 	"math/rand"
 	"runtime"
 
-	"github.com/fishus/go-advanced-metrics/internal/metrics"
+	"github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
-func CollectMemStats(ms *runtime.MemStats, data *metrics.MemStorage) {
+func CollectMemStats(ms *runtime.MemStats, data *storage.MemStorage) {
 	runtime.ReadMemStats(ms)
 
 	_ = setMetricGauge(data, "Alloc", float64(ms.Alloc))
@@ -43,7 +43,7 @@ func CollectMemStats(ms *runtime.MemStats, data *metrics.MemStorage) {
 	_ = setMetricGauge(data, "RandomValue", rand.Float64()*100)
 }
 
-func setMetricGauge(data *metrics.MemStorage, name string, value float64) error {
+func setMetricGauge(data *storage.MemStorage, name string, value float64) error {
 	if data == nil {
 		return errors.New("data is nil")
 	}
@@ -55,7 +55,7 @@ func setMetricGauge(data *metrics.MemStorage, name string, value float64) error 
 	return nil
 }
 
-func addMetricCounter(data *metrics.MemStorage, name string, value int64) error {
+func addMetricCounter(data *storage.MemStorage, name string, value int64) error {
 	if data == nil {
 		return errors.New("data is nil")
 	}

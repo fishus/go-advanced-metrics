@@ -7,6 +7,7 @@ import (
 
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
+	store "github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
 // UpdateMetricsHandler processes a request like POST /update/
@@ -14,14 +15,7 @@ import (
 func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	type Metrics struct {
-		ID    string   `json:"id"`              // имя метрики
-		MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-		Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-		Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
-	}
-
-	var metric Metrics
+	var metric metrics.Metrics
 
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 		JSONError(w, err.Error(), http.StatusBadRequest)
@@ -29,71 +23,43 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// При попытке передать запрос без имени метрики возвращать http.StatusNotFound.
-	if metric.ID == "" {
-		JSONError(w, `Metric name not specified`, http.StatusNotFound)
-		logger.Log.Debug(`Metric name not specified`)
-		return
-	}
-
-	// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
-	if metric.MType == "" {
-		JSONError(w, `Metric type not specified`, http.StatusBadRequest)
-		logger.Log.Debug(`Metric type not specified`)
+	if err := validateInputMetric(metric); err != nil {
+		var ve *ValidMetricError
+		if errors.As(err, &ve) {
+			JSONError(w, ve.Error(), ve.HTTPCode)
+			logger.Log.Debug(ve.Error(), logger.Any("metric", metric))
+		} else {
+			JSONError(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
 	switch metric.MType {
 	case metrics.TypeCounter:
-		if metric.Delta == nil {
-			JSONError(w, `Incorrect counter value`, http.StatusBadRequest)
-			logger.Log.Debug(`Incorrect counter value`, logger.Any("metric", metric))
-			return
-		}
-
-		err := storage.AddCounter(metric.ID, *metric.Delta)
+		err := storage.AddCounterContext(r.Context(), metric.ID, *metric.Delta)
 		if err != nil {
 			JSONError(w, err.Error(), http.StatusBadRequest)
 			logger.Log.Debug(err.Error(), logger.Any("metric", metric))
 			return
 		}
-		counterValue, _ := storage.CounterValue(metric.ID)
-		metric.Delta = new(int64)
-		*metric.Delta = counterValue
-		metric.Value = nil
+		counterValue, _ := storage.CounterValueContext(r.Context(), metric.ID)
+		metric = metric.SetDelta(counterValue)
 	case metrics.TypeGauge:
-		if metric.Value == nil {
-			JSONError(w, `Incorrect gauge value`, http.StatusBadRequest)
-			logger.Log.Debug(`Incorrect gauge value`, logger.Any("metric", metric))
-			return
-		}
-
-		err := storage.SetGauge(metric.ID, *metric.Value)
+		err := storage.SetGaugeContext(r.Context(), metric.ID, *metric.Value)
 		if err != nil {
 			JSONError(w, err.Error(), http.StatusBadRequest)
 			logger.Log.Debug(err.Error(), logger.Any("metric", metric))
 			return
 		}
-		gaugeValue, _ := storage.GaugeValue(metric.ID)
-		metric.Value = new(float64)
-		*metric.Value = gaugeValue
-		metric.Delta = nil
-	default:
-		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
-		JSONError(w, `Incorrect metric type`, http.StatusBadRequest)
-		logger.Log.Debug(`Incorrect metric type`, logger.String("type", metric.MType))
-		return
+		gaugeValue, _ := storage.GaugeValueContext(r.Context(), metric.ID)
+		metric = metric.SetValue(gaugeValue)
 	}
 
-	// Save metrics values into a file
-	if Config.IsSyncMetricsSave {
-		err := storage.Save()
-		if !errors.Is(err, metrics.ErrEmptyFilename) {
-			if err != nil {
-				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
-			} else {
-				logger.Log.Debug("Metric values saved into file", logger.String("event", "save metrics into file"))
-			}
+	// Synchronously save metrics values into a file
+	if s, ok := storage.(store.SyncSaver); ok {
+		err := s.SyncSave()
+		if err != nil {
+			logger.Log.Error(err.Error(), logger.String("event", "synchronously save metrics into file"))
 		}
 	}
 
