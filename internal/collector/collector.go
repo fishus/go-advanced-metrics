@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"context"
 	"errors"
 	"math/rand"
 	"runtime"
@@ -8,7 +9,16 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
-func CollectMemStats(ms *runtime.MemStats, data *storage.MemStorage) {
+func CollectMemStats(ctx context.Context) *storage.MemStorage {
+	select {
+	case <-ctx.Done():
+		return nil
+	default:
+	}
+
+	ms := &runtime.MemStats{}
+	data := storage.NewMemStorage()
+
 	runtime.ReadMemStats(ms)
 
 	_ = setMetricGauge(data, "Alloc", float64(ms.Alloc))
@@ -41,6 +51,8 @@ func CollectMemStats(ms *runtime.MemStats, data *storage.MemStorage) {
 
 	_ = addMetricCounter(data, "PollCount", 1)
 	_ = setMetricGauge(data, "RandomValue", rand.Float64()*100)
+
+	return data
 }
 
 func setMetricGauge(data *storage.MemStorage, name string, value float64) error {

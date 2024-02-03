@@ -9,7 +9,6 @@ import (
 	"errors"
 	"io"
 	"net"
-	"runtime"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -21,11 +20,63 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
-func collectAndPostMetrics() {
-	// data contains a set of values for all metrics
-	data := storage.NewMemStorage()
+func collectAndPostMetrics(ctx context.Context) {
 
-	ms := &runtime.MemStats{}
+	dataCh := collectMetricsAtIntervals(ctx)
+	postMetricsAtIntervals(ctx, dataCh)
+}
+
+// collectMetricsAtIntervals collects metrics every {options.pollInterval} seconds
+func collectMetricsAtIntervals(ctx context.Context) chan storage.MemStorage {
+	dataCh := make(chan storage.MemStorage, 10)
+
+	go func() {
+		defer close(dataCh)
+		ticker := time.NewTicker(config.pollInterval)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				data := collector.CollectMemStats(ctx)
+				dataCh <- *data
+			}
+		}
+	}()
+
+	return dataCh
+}
+
+// postMetricsAtIntervals posts collected metrics every {options.reportInterval} seconds
+func postMetricsAtIntervals(ctx context.Context, dataCh <-chan storage.MemStorage) {
+	dataBuf := make([]storage.MemStorage, 0)
+	workerCh := make(chan storage.MemStorage)
+	defer close(workerCh)
+	go workerPostMetrics(ctx, workerCh)
+
+	ticker := time.NewTicker(config.reportInterval)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case data := <-dataCh:
+			dataBuf = append(dataBuf, data)
+		case <-ticker.C:
+			for _, data := range dataBuf {
+				workerCh <- data
+			}
+			dataBuf = dataBuf[:0]
+		}
+	}
+}
+
+// workerPostMetrics posts collected metrics
+func workerPostMetrics(ctx context.Context, dataCh <-chan storage.MemStorage) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
 
 	client := resty.New().SetBaseURL("http://" + config.serverAddr)
 	logger.Log.Info("Running agent", logger.String("address", config.serverAddr), logger.String("event", "start agent"))
@@ -36,32 +87,10 @@ func collectAndPostMetrics() {
 		return
 	}
 
-	ctx := context.Background()
-
-	go collectMetricsAtIntervals(ctx, ms, data)
-	go postMetricsAtIntervals(ctx, client, gz, data)
-
-	<-ctx.Done()
-}
-
-// Collect metrics every {options.pollInterval} seconds
-func collectMetricsAtIntervals(ctx context.Context, ms *runtime.MemStats, data *storage.MemStorage) {
-	ticker := time.NewTicker(config.pollInterval)
-	for {
-		<-ticker.C
-		collector.CollectMemStats(ms, data)
-	}
-}
-
-func postMetricsAtIntervals(ctx context.Context, client *resty.Client, gz *gzip.Writer, data *storage.MemStorage) {
-	ticker := time.NewTicker(config.reportInterval)
-	for {
-		<-ticker.C
-
-		err := retryPostUpdateMetrics(ctx, client, gz, data)
-		if err == nil {
-			// Reset metrics
-			_ = data.Reset()
+	for data := range dataCh {
+		err := retryPostMetrics(ctx, client, gz, data)
+		if err != nil {
+			logger.Log.Error(err.Error())
 		}
 	}
 }
@@ -80,7 +109,7 @@ func packMetricsIntoBatch(data *storage.MemStorage) []metrics.Metrics {
 	return batch
 }
 
-func postUpdateMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, batch []metrics.Metrics) error {
+func postMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, batch []metrics.Metrics) error {
 	if len(batch) == 0 {
 		return nil
 	}
@@ -162,7 +191,7 @@ func postUpdateMetrics(ctx context.Context, client *resty.Client, gz *gzip.Write
 	return nil
 }
 
-func retryPostUpdateMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, data *storage.MemStorage) error {
+func retryPostMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, data storage.MemStorage) error {
 	var err error
 	var neterr *net.OpError
 
@@ -181,8 +210,8 @@ func retryPostUpdateMetrics(ctx context.Context, client *resty.Client, gz *gzip.
 		default:
 		}
 
-		batch := packMetricsIntoBatch(data)
-		err = postUpdateMetrics(ctx, client, gz, batch)
+		batch := packMetricsIntoBatch(&data)
+		err = postMetrics(ctx, client, gz, batch)
 
 		errors.As(err, &neterr)
 		if err == nil || !errors.Is(err, neterr) {

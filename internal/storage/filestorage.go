@@ -39,11 +39,7 @@ func (fs *FileStorage) SetIsSyncSave(isSyncSave bool) {
 // Save metrics values into a file
 func (fs *FileStorage) Save() error {
 	fs.muFile.Lock()
-	fs.muGauges.Lock()
-	fs.muCounters.Lock()
 	defer fs.muFile.Unlock()
-	defer fs.muGauges.Unlock()
-	defer fs.muCounters.Unlock()
 
 	if fs.filename == "" {
 		return ErrEmptyFilename
@@ -77,11 +73,7 @@ func (fs *FileStorage) SyncSave() error {
 // Load reads metric values from a file.
 func (fs *FileStorage) Load() error {
 	fs.muFile.Lock()
-	fs.muGauges.Lock()
-	fs.muCounters.Lock()
 	defer fs.muFile.Unlock()
-	defer fs.muGauges.Unlock()
-	defer fs.muCounters.Unlock()
 
 	if fs.filename == "" {
 		return ErrEmptyFilename
