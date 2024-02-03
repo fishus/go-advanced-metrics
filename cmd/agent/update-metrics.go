@@ -21,7 +21,6 @@ import (
 )
 
 func collectAndPostMetrics(ctx context.Context) {
-
 	dataCh := collectMetricsAtIntervals(ctx)
 	postMetricsAtIntervals(ctx, dataCh)
 }
@@ -38,10 +37,70 @@ func collectMetricsAtIntervals(ctx context.Context) chan storage.MemStorage {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				data := collector.CollectMemStats(ctx)
-				dataCh <- *data
+				channels := make([]chan storage.MemStorage, 2)
+				channels[0] = collectRuntimeMetrics(ctx)
+				channels[1] = collectPsMetrics(ctx)
+
+				data := combineMetrics(ctx, channels...)
+				dataCh <- data
 			}
 		}
+	}()
+
+	return dataCh
+}
+
+func combineMetrics(ctx context.Context, channels ...chan storage.MemStorage) storage.MemStorage {
+	data := storage.NewMemStorage()
+
+	select {
+	case <-ctx.Done():
+		return *data
+	default:
+	}
+
+	for _, ch := range channels {
+		for cData := range ch {
+			for _, g := range cData.Gauges() {
+				_ = data.SetGauge(g.Name(), g.Value())
+			}
+			for _, c := range cData.Counters() {
+				_ = data.AddCounter(c.Name(), c.Value())
+			}
+		}
+	}
+	return *data
+}
+
+func collectRuntimeMetrics(ctx context.Context) chan storage.MemStorage {
+	dataCh := make(chan storage.MemStorage)
+
+	go func() {
+		defer close(dataCh)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		data := collector.CollectRuntimeMetrics(ctx)
+		dataCh <- *data
+	}()
+
+	return dataCh
+}
+
+func collectPsMetrics(ctx context.Context) chan storage.MemStorage {
+	dataCh := make(chan storage.MemStorage)
+
+	go func() {
+		defer close(dataCh)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		data := collector.CollectPsMetrics(ctx)
+		dataCh <- *data
 	}()
 
 	return dataCh

@@ -3,13 +3,17 @@ package collector
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"runtime"
+
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 
 	"github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
-func CollectMemStats(ctx context.Context) *storage.MemStorage {
+func CollectRuntimeMetrics(ctx context.Context) *storage.MemStorage {
 	select {
 	case <-ctx.Done():
 		return nil
@@ -51,6 +55,27 @@ func CollectMemStats(ctx context.Context) *storage.MemStorage {
 
 	_ = addMetricCounter(data, "PollCount", 1)
 	_ = setMetricGauge(data, "RandomValue", rand.Float64()*100)
+
+	return data
+}
+
+func CollectPsMetrics(ctx context.Context) *storage.MemStorage {
+	select {
+	case <-ctx.Done():
+		return nil
+	default:
+	}
+
+	data := storage.NewMemStorage()
+
+	m, _ := mem.VirtualMemory()
+	_ = setMetricGauge(data, "TotalMemory", float64(m.Total))
+	_ = setMetricGauge(data, "FreeMemory", float64(m.Free))
+
+	cpuPercent, _ := cpu.Percent(0, true)
+	for i, p := range cpuPercent {
+		_ = setMetricGauge(data, fmt.Sprintf("CPUutilization%d", i), p)
+	}
 
 	return data
 }
