@@ -29,6 +29,7 @@ func (suite *FlagsTestSuite) SetupSuite() {
 		"POLL_INTERVAL",
 		"REPORT_INTERVAL",
 		"KEY",
+		"RATE_LIMIT",
 	} {
 		suite.osEnviron[e] = os.Getenv(e)
 	}
@@ -75,6 +76,7 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 				"pollInterval":   2 * time.Second,
 				"reportInterval": 10 * time.Second,
 				"secretKey":      "",
+				"rateLimit":      uint(3),
 			},
 		},
 		{
@@ -97,6 +99,11 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 			args: []string{"-k=secret"},
 			want: map[string]interface{}{"secretKey": "secret"},
 		},
+		{
+			name: "Positive case: Set flag -l",
+			args: []string{"-l=15"},
+			want: map[string]interface{}{"rateLimit": uint(15)},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -112,7 +119,7 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 
 			for k, want := range tc.want {
 				field := configFields.FieldByName(k)
-				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'", k)
+				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'. Value is: '%v'(%v), Should be: '%v'(%v)", k, field, field.Type(), reflect.ValueOf(want), reflect.ValueOf(want).Type())
 			}
 		})
 	}
@@ -132,6 +139,7 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 				"pollInterval":   0 * time.Second,
 				"reportInterval": 0 * time.Second,
 				"secretKey":      "",
+				"rateLimit":      uint(0),
 			},
 		},
 		{
@@ -153,6 +161,11 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 			name: "Positive case: Set env KEY",
 			envs: []string{"KEY=secret"},
 			want: map[string]interface{}{"secretKey": "secret"},
+		},
+		{
+			name: "Positive case: Set env RATE_LIMIT",
+			envs: []string{"RATE_LIMIT=15"},
+			want: map[string]interface{}{"rateLimit": uint(15)},
 		},
 	}
 
@@ -181,7 +194,7 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 
 			for k, want := range tc.want {
 				field := configFields.FieldByName(k)
-				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'", k)
+				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'. Value is: '%v'(%v), Should be: '%v'(%v)", k, field, field.Type(), reflect.ValueOf(want), reflect.ValueOf(want).Type())
 			}
 		})
 	}
@@ -203,6 +216,7 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 				"pollInterval":   2 * time.Second,
 				"reportInterval": 10 * time.Second,
 				"secretKey":      "",
+				"rateLimit":      uint(3),
 			},
 		},
 		{
@@ -277,6 +291,25 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 			envs: []string{"KEY=secret"},
 			want: map[string]interface{}{"secretKey": "secret"},
 		},
+		////////
+		{
+			name: "Positive case: Set flag -l and env RATE_LIMIT",
+			args: []string{"-l=15"},
+			envs: []string{"RATE_LIMIT=25"},
+			want: map[string]interface{}{"rateLimit": uint(25)},
+		},
+		{
+			name: "Positive case: Set flag -l only",
+			args: []string{"-l=15"},
+			envs: nil,
+			want: map[string]interface{}{"rateLimit": uint(15)},
+		},
+		{
+			name: "Positive case: Set env RATE_LIMIT only",
+			args: nil,
+			envs: []string{"RATE_LIMIT=15"},
+			want: map[string]interface{}{"rateLimit": uint(15)},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -307,7 +340,7 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 
 			for k, want := range tc.want {
 				field := configFields.FieldByName(k)
-				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'", k)
+				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'. Value is: '%v'(%v), Should be: '%v'(%v)", k, field, field.Type(), reflect.ValueOf(want), reflect.ValueOf(want).Type())
 			}
 		})
 	}

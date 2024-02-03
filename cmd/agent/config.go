@@ -7,6 +7,7 @@ type Config struct {
 	pollInterval   time.Duration // Обновлять метрики с заданной частотой (в секундах)
 	reportInterval time.Duration // Отправлять метрики на сервер с заданной частотой (в секундах)
 	secretKey      string        // Ключ для подписи данных
+	rateLimit      uint          // Количество одновременно исходящих запросов
 	logLevel       string
 }
 
@@ -57,5 +58,14 @@ func (c Config) SecretKey() string {
 
 func (c Config) SetSecretKey(key string) Config {
 	c.secretKey = key
+	return c
+}
+
+func (c Config) RateLimit() uint {
+	return c.rateLimit
+}
+
+func (c Config) SetRateLimit(limit uint) Config {
+	c.rateLimit = limit
 	return c
 }

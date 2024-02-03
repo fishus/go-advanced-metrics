@@ -32,13 +32,17 @@ func parseFlags(config Config) Config {
 	// Флаг -k=<КЛЮЧ> Ключ для подписи данных
 	secretKey := flag.String("k", "", "Secret key for signing data")
 
+	// Флаг -l=<ЗНАЧЕНИЕ> Количество одновременно исходящих запросов
+	rateLimit := flag.Uint("l", 3, "Количество одновременно исходящих запросов")
+
 	flag.Parse()
 
 	return config.
 		SetServerAddr(*serverAddr).
 		SetPollIntervalInSeconds(*pollInterval).
 		SetReportIntervalInSeconds(*reportInterval).
-		SetSecretKey(*secretKey)
+		SetSecretKey(*secretKey).
+		SetRateLimit(*rateLimit)
 }
 
 func parseEnvs(config Config) Config {
@@ -47,6 +51,7 @@ func parseEnvs(config Config) Config {
 		PollInterval   uint   `env:"POLL_INTERVAL"`
 		ReportInterval uint   `env:"REPORT_INTERVAL"`
 		SecretKey      string `env:"KEY"`
+		RateLimit      uint   `env:"RATE_LIMIT"`
 	}
 	err := env.Parse(&cfg)
 	if err != nil {
@@ -64,6 +69,9 @@ func parseEnvs(config Config) Config {
 	}
 	if _, exists := os.LookupEnv("KEY"); exists {
 		config = config.SetSecretKey(cfg.SecretKey)
+	}
+	if _, exists := os.LookupEnv("RATE_LIMIT"); exists {
+		config = config.SetRateLimit(cfg.RateLimit)
 	}
 
 	return config
