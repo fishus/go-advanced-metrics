@@ -62,6 +62,9 @@ func (c Config) SetSecretKey(key string) Config {
 }
 
 func (c Config) RateLimit() uint {
+	if c.rateLimit < 1 {
+		return 1
+	}
 	return c.rateLimit
 }
 

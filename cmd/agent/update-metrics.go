@@ -50,9 +50,12 @@ func collectMetricsAtIntervals(ctx context.Context) chan storage.MemStorage {
 // postMetricsAtIntervals posts collected metrics every {options.reportInterval} seconds
 func postMetricsAtIntervals(ctx context.Context, dataCh <-chan storage.MemStorage) {
 	dataBuf := make([]storage.MemStorage, 0)
-	workerCh := make(chan storage.MemStorage)
+	workerCh := make(chan storage.MemStorage, (config.RateLimit()))
 	defer close(workerCh)
-	go workerPostMetrics(ctx, workerCh)
+
+	for w := 1; w <= int(config.RateLimit()); w++ {
+		go workerPostMetrics(ctx, workerCh)
+	}
 
 	ticker := time.NewTicker(config.reportInterval)
 	for {
