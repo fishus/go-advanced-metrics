@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
+	"github.com/fishus/go-advanced-metrics/internal/app"
 	db "github.com/fishus/go-advanced-metrics/internal/database"
 	"github.com/fishus/go-advanced-metrics/internal/handlers"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
@@ -24,20 +22,30 @@ func main() {
 	}
 	defer logger.Log.Sync()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	app.Shutdown(cancel)
+
 	if config.databaseDSN != "" {
-		ctxDBTimeout, cancelDBTimeout := context.WithTimeout(context.Background(), (3 * time.Second))
-		defer cancelDBTimeout()
-		dbPool := db.Open(ctxDBTimeout, config.databaseDSN)
+		ctxDB, cancelDB := context.WithTimeout(ctx, (3 * time.Second))
+		defer cancelDB()
+		dbPool := db.Open(ctxDB, config.databaseDSN)
 		defer dbPool.Close()
 	}
 
-	setStorage()
-	loadMetricsFromFile()
-	go saveMetricsAtIntervals()
-	runServer()
+	setStorage(ctx)
+	loadMetricsFromFile(ctx)
+	saveMetricsAtIntervals(ctx)
+	runServer(ctx)
 }
 
-func setStorage() {
+func setStorage(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+
 	dbPool, _ := db.Pool()
 	if dbPool != nil {
 		dbStorage := storage.NewDBStorage(dbPool)
@@ -58,11 +66,11 @@ func setStorage() {
 	handlers.SetStorage(storage.NewMemStorage())
 }
 
-func runServer() {
+func runServer(ctx context.Context) {
 	handlers.SetSecretKey(config.secretKey)
 	server := &http.Server{Addr: config.serverAddr, Handler: handlers.ServerRouter()}
 
-	go saveMetricsOnExit(server)
+	saveMetricsOnExit(ctx, server)
 
 	logger.Log.Info("Running server", logger.String("address", config.serverAddr), logger.String("event", "start server"))
 	err := server.ListenAndServe()
@@ -71,7 +79,13 @@ func runServer() {
 	}
 }
 
-func loadMetricsFromFile() {
+func loadMetricsFromFile(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+
 	if !config.isReqRestore {
 		return
 	}
@@ -88,7 +102,7 @@ func loadMetricsFromFile() {
 	}
 }
 
-func saveMetricsAtIntervals() {
+func saveMetricsAtIntervals(ctx context.Context) {
 	if config.storeInterval <= 0 {
 		return
 	}
@@ -98,37 +112,36 @@ func saveMetricsAtIntervals() {
 		return
 	}
 
-	now := time.Now()
-	storeAfter := now.Add(config.storeInterval)
-	for {
-		now = time.Now()
-		if now.After(storeAfter) {
-			storeAfter = now.Add(config.storeInterval)
+	go func() {
+		ticker := time.NewTicker(config.storeInterval)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				err := s.Save()
+				if err != nil {
+					logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
+				}
+			}
+		}
+	}()
+}
+
+func saveMetricsOnExit(ctx context.Context, server *http.Server) {
+	go func() {
+		<-ctx.Done()
+
+		if s, ok := handlers.Storage().(storage.Saver); ok {
 			err := s.Save()
 			if err != nil {
 				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
 			}
 		}
-		time.Sleep(1 * time.Second)
-	}
-}
 
-func saveMetricsOnExit(server *http.Server) {
-	termSig := make(chan os.Signal, 1)
-	signal.Notify(termSig, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
-
-	sig := <-termSig
-	logger.Log.Debug("Server interrupt signal caught", logger.String("event", "stop server"), logger.String("signal", sig.String()))
-
-	if s, ok := handlers.Storage().(storage.Saver); ok {
-		err := s.Save()
+		err := server.Shutdown(ctx)
 		if err != nil {
-			logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
+			logger.Log.Error(err.Error(), logger.String("event", "stop server"))
 		}
-	}
-
-	err := server.Shutdown(context.Background())
-	if err != nil {
-		logger.Log.Error(err.Error(), logger.String("event", "stop server"))
-	}
+	}()
 }
