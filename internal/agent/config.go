@@ -1,4 +1,4 @@
-package main
+package agent
 
 import "time"
 
@@ -71,4 +71,8 @@ func (c Config) RateLimit() uint {
 func (c Config) SetRateLimit(limit uint) Config {
 	c.rateLimit = limit
 	return c
+}
+
+func (c Config) LogLevel() string {
+	return c.logLevel
 }

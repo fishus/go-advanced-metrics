@@ -1,4 +1,4 @@
-package main
+package agent
 
 import (
 	"flag"
@@ -334,7 +334,7 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 				}
 			}
 
-			config := loadConfig()
+			config := LoadConfig()
 
 			configFields := reflect.ValueOf(config)
 

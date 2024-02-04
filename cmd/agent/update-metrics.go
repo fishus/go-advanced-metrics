@@ -31,7 +31,7 @@ func collectMetricsAtIntervals(ctx context.Context) chan storage.MemStorage {
 
 	go func() {
 		defer close(dataCh)
-		ticker := time.NewTicker(config.pollInterval)
+		ticker := time.NewTicker(config.PollInterval())
 		for {
 			select {
 			case <-ctx.Done():
@@ -116,7 +116,7 @@ func postMetricsAtIntervals(ctx context.Context, dataCh <-chan storage.MemStorag
 		go workerPostMetrics(ctx, workerCh)
 	}
 
-	ticker := time.NewTicker(config.reportInterval)
+	ticker := time.NewTicker(config.ReportInterval())
 	for {
 		select {
 		case <-ctx.Done():
@@ -140,8 +140,8 @@ func workerPostMetrics(ctx context.Context, dataCh <-chan storage.MemStorage) {
 	default:
 	}
 
-	client := resty.New().SetBaseURL("http://" + config.serverAddr)
-	logger.Log.Info("Running agent worker", logger.String("address", config.serverAddr), logger.String("event", "start agent worker"))
+	client := resty.New().SetBaseURL("http://" + config.ServerAddr())
+	logger.Log.Info("Running agent worker", logger.String("address", config.ServerAddr()), logger.String("event", "start agent worker"))
 
 	gz, err := gzip.NewWriterLevel(nil, gzip.BestCompression)
 	if err != nil {
@@ -191,8 +191,8 @@ func postMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, bat
 	}
 
 	var hashString string
-	if config.secretKey != "" {
-		hash := secure.Hash(jsonBody, []byte(config.secretKey))
+	if config.SecretKey() != "" {
+		hash := secure.Hash(jsonBody, []byte(config.SecretKey()))
 		hashString = hex.EncodeToString(hash[:])
 	}
 
@@ -215,7 +215,7 @@ func postMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, bat
 
 	logger.Log.Debug(`Send POST /updates/ request`,
 		logger.String("event", "send request"),
-		logger.String("addr", config.serverAddr),
+		logger.String("addr", config.ServerAddr()),
 		logger.Any("body", json.RawMessage(jsonBody)))
 
 	req := client.R().
@@ -235,7 +235,7 @@ func postMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, bat
 	if err != nil {
 		logger.Log.Error(err.Error(),
 			logger.String("event", "send request"),
-			logger.String("url", "http://"+config.serverAddr+"/updates/"),
+			logger.String("url", "http://"+config.ServerAddr()+"/updates/"),
 			logger.Any("body", json.RawMessage(jsonBody)))
 		return err
 	}

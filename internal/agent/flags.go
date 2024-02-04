@@ -1,4 +1,4 @@
-package main
+package agent
 
 import (
 	"flag"
@@ -9,7 +9,7 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 )
 
-func loadConfig() Config {
+func LoadConfig() Config {
 	config := NewConfig()
 	config = parseFlags(config)
 	config = parseEnvs(config)

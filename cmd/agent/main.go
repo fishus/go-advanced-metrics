@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 
+	"github.com/fishus/go-advanced-metrics/internal/agent"
 	"github.com/fishus/go-advanced-metrics/internal/app"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 )
 
-var config Config
+var config agent.Config
 
 func main() {
-	config = loadConfig()
-	if err := logger.Initialize(config.logLevel); err != nil {
+	config = agent.LoadConfig()
+	if err := logger.Initialize(config.LogLevel()); err != nil {
 		panic(err)
 	}
 	defer logger.Log.Sync()
