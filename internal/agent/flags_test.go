@@ -112,7 +112,7 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 				os.Args = append(os.Args, tc.args...)
 			}
 
-			config := NewConfig()
+			config := newConfig()
 			config = parseFlags(config)
 
 			configFields := reflect.ValueOf(config)
@@ -187,7 +187,7 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 				}
 			}
 
-			config := NewConfig()
+			config := newConfig()
 			config = parseEnvs(config)
 
 			configFields := reflect.ValueOf(config)
@@ -334,7 +334,7 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 				}
 			}
 
-			config := LoadConfig()
+			config := loadConfig()
 
 			configFields := reflect.ValueOf(config)
 

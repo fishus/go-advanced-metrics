@@ -2,7 +2,7 @@ package agent
 
 import "time"
 
-type Config struct {
+type config struct {
 	serverAddr     string        // serverAddr store address and port to send requests to a server
 	pollInterval   time.Duration // Обновлять метрики с заданной частотой (в секундах)
 	reportInterval time.Duration // Отправлять метрики на сервер с заданной частотой (в секундах)
@@ -11,68 +11,68 @@ type Config struct {
 	logLevel       string
 }
 
-func NewConfig() Config {
-	return Config{logLevel: "info"}
+func newConfig() config {
+	return config{logLevel: "info"}
 }
 
-func (c Config) ServerAddr() string {
+func (c config) ServerAddr() string {
 	return c.serverAddr
 }
 
-func (c Config) SetServerAddr(addr string) Config {
+func (c config) SetServerAddr(addr string) config {
 	c.serverAddr = addr
 	return c
 }
 
-func (c Config) PollInterval() time.Duration {
+func (c config) PollInterval() time.Duration {
 	return c.pollInterval
 }
 
-func (c Config) SetPollInterval(t time.Duration) Config {
+func (c config) SetPollInterval(t time.Duration) config {
 	c.pollInterval = t
 	return c
 }
 
-func (c Config) SetPollIntervalInSeconds(s uint) Config {
+func (c config) SetPollIntervalInSeconds(s uint) config {
 	c.pollInterval = time.Duration(s) * time.Second
 	return c
 }
 
-func (c Config) ReportInterval() time.Duration {
+func (c config) ReportInterval() time.Duration {
 	return c.reportInterval
 }
 
-func (c Config) SetReportInterval(t time.Duration) Config {
+func (c config) SetReportInterval(t time.Duration) config {
 	c.reportInterval = t
 	return c
 }
 
-func (c Config) SetReportIntervalInSeconds(s uint) Config {
+func (c config) SetReportIntervalInSeconds(s uint) config {
 	c.reportInterval = time.Duration(s) * time.Second
 	return c
 }
 
-func (c Config) SecretKey() string {
+func (c config) SecretKey() string {
 	return c.secretKey
 }
 
-func (c Config) SetSecretKey(key string) Config {
+func (c config) SetSecretKey(key string) config {
 	c.secretKey = key
 	return c
 }
 
-func (c Config) RateLimit() uint {
+func (c config) RateLimit() uint {
 	if c.rateLimit < 1 {
 		return 1
 	}
 	return c.rateLimit
 }
 
-func (c Config) SetRateLimit(limit uint) Config {
+func (c config) SetRateLimit(limit uint) config {
 	c.rateLimit = limit
 	return c
 }
 
-func (c Config) LogLevel() string {
+func (c config) LogLevel() string {
 	return c.logLevel
 }

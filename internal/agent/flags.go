@@ -9,15 +9,15 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 )
 
-func LoadConfig() Config {
-	config := NewConfig()
+func loadConfig() config {
+	config := newConfig()
 	config = parseFlags(config)
 	config = parseEnvs(config)
 
 	return config
 }
 
-func parseFlags(config Config) Config {
+func parseFlags(config config) config {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
 	// Флаг -a=<ЗНАЧЕНИЕ> отвечает за адрес эндпоинта HTTP-сервера (по умолчанию localhost:8080).
@@ -45,7 +45,7 @@ func parseFlags(config Config) Config {
 		SetRateLimit(*rateLimit)
 }
 
-func parseEnvs(config Config) Config {
+func parseEnvs(config config) config {
 	var cfg struct {
 		ServerAddr     string `env:"ADDRESS"`
 		PollInterval   uint   `env:"POLL_INTERVAL"`

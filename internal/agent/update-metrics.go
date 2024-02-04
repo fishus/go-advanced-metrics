@@ -1,4 +1,4 @@
-package main
+package agent
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
-func collectAndPostMetrics(ctx context.Context) {
+func CollectAndPostMetrics(ctx context.Context) {
 	dataCh := collectMetricsAtIntervals(ctx)
 	postMetricsAtIntervals(ctx, dataCh)
 }
@@ -31,7 +31,7 @@ func collectMetricsAtIntervals(ctx context.Context) chan storage.MemStorage {
 
 	go func() {
 		defer close(dataCh)
-		ticker := time.NewTicker(config.PollInterval())
+		ticker := time.NewTicker(Config.PollInterval())
 		for {
 			select {
 			case <-ctx.Done():
@@ -109,14 +109,14 @@ func collectPsMetrics(ctx context.Context) chan storage.MemStorage {
 // postMetricsAtIntervals posts collected metrics every {options.reportInterval} seconds
 func postMetricsAtIntervals(ctx context.Context, dataCh <-chan storage.MemStorage) {
 	dataBuf := make([]storage.MemStorage, 0)
-	workerCh := make(chan storage.MemStorage, (config.RateLimit()))
+	workerCh := make(chan storage.MemStorage, (Config.RateLimit()))
 	defer close(workerCh)
 
-	for w := 1; w <= int(config.RateLimit()); w++ {
+	for w := 1; w <= int(Config.RateLimit()); w++ {
 		go workerPostMetrics(ctx, workerCh)
 	}
 
-	ticker := time.NewTicker(config.ReportInterval())
+	ticker := time.NewTicker(Config.ReportInterval())
 	for {
 		select {
 		case <-ctx.Done():
@@ -140,8 +140,8 @@ func workerPostMetrics(ctx context.Context, dataCh <-chan storage.MemStorage) {
 	default:
 	}
 
-	client := resty.New().SetBaseURL("http://" + config.ServerAddr())
-	logger.Log.Info("Running agent worker", logger.String("address", config.ServerAddr()), logger.String("event", "start agent worker"))
+	client := resty.New().SetBaseURL("http://" + Config.ServerAddr())
+	logger.Log.Info("Running agent worker", logger.String("address", Config.ServerAddr()), logger.String("event", "start agent worker"))
 
 	gz, err := gzip.NewWriterLevel(nil, gzip.BestCompression)
 	if err != nil {
@@ -191,8 +191,8 @@ func postMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, bat
 	}
 
 	var hashString string
-	if config.SecretKey() != "" {
-		hash := secure.Hash(jsonBody, []byte(config.SecretKey()))
+	if Config.SecretKey() != "" {
+		hash := secure.Hash(jsonBody, []byte(Config.SecretKey()))
 		hashString = hex.EncodeToString(hash[:])
 	}
 
@@ -215,7 +215,7 @@ func postMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, bat
 
 	logger.Log.Debug(`Send POST /updates/ request`,
 		logger.String("event", "send request"),
-		logger.String("addr", config.ServerAddr()),
+		logger.String("addr", Config.ServerAddr()),
 		logger.Any("body", json.RawMessage(jsonBody)))
 
 	req := client.R().
@@ -235,7 +235,7 @@ func postMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, bat
 	if err != nil {
 		logger.Log.Error(err.Error(),
 			logger.String("event", "send request"),
-			logger.String("url", "http://"+config.ServerAddr()+"/updates/"),
+			logger.String("url", "http://"+Config.ServerAddr()+"/updates/"),
 			logger.Any("body", json.RawMessage(jsonBody)))
 		return err
 	}
