@@ -141,7 +141,7 @@ func workerPostMetrics(ctx context.Context, dataCh <-chan storage.MemStorage) {
 	}
 
 	client := resty.New().SetBaseURL("http://" + config.serverAddr)
-	logger.Log.Info("Running agent", logger.String("address", config.serverAddr), logger.String("event", "start agent"))
+	logger.Log.Info("Running agent worker", logger.String("address", config.serverAddr), logger.String("event", "start agent worker"))
 
 	gz, err := gzip.NewWriterLevel(nil, gzip.BestCompression)
 	if err != nil {
@@ -174,6 +174,12 @@ func packMetricsIntoBatch(data *storage.MemStorage) []metrics.Metrics {
 func postMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, batch []metrics.Metrics) error {
 	if len(batch) == 0 {
 		return nil
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
 	}
 
 	jsonBody, err := json.Marshal(batch)
