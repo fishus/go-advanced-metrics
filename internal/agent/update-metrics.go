@@ -73,7 +73,7 @@ func collectMetrics(ctx context.Context) *storage.MemStorage {
 
 	wg.Wait()
 
-	ms := make([]storage.MemStorage, 2)
+	ms := make([]storage.MemStorage, 0, 2)
 
 	if mRuntime != nil {
 		ms = append(ms, *mRuntime)
