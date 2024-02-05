@@ -15,6 +15,8 @@ func ServerRouter() chi.Router {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestID)
 	r.Use(mw.Decompress)
+	r.Use(mw.ValidateSign([]byte(secretKey)))
+	r.Use(mw.Sign([]byte(secretKey)))
 	r.Use(middleware.Compress(9, "application/json", "text/html"))
 	r.Use(middleware.RequestLogger(&logger.LogFormatter{}))
 

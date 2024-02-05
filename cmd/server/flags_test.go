@@ -30,6 +30,7 @@ func (suite *FlagsTestSuite) SetupSuite() {
 		"FILE_STORAGE_PATH",
 		"RESTORE",
 		"DATABASE_DSN",
+		"KEY",
 	} {
 		suite.osEnviron[e] = os.Getenv(e)
 	}
@@ -69,7 +70,7 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 		want map[string]interface{}
 	}{
 		{
-			name: "Positive case #1",
+			name: "Positive case: Default values",
 			args: nil,
 			want: map[string]interface{}{
 				"serverAddr":      "localhost:8080",
@@ -77,37 +78,43 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 				"fileStoragePath": "/tmp/metrics-db.json",
 				"isReqRestore":    true,
 				"databaseDSN":     "",
+				"secretKey":       "",
 			},
 		},
 		{
-			name: "Positive case #2",
+			name: "Positive case: Set flag -a",
 			args: []string{"-a=example.com:8181"},
 			want: map[string]interface{}{"serverAddr": "example.com:8181"},
 		},
 		{
-			name: "Positive case #3",
+			name: "Positive case: Set flag -i",
 			args: []string{"-i=10"},
 			want: map[string]interface{}{"storeInterval": 10 * time.Second},
 		},
 		{
-			name: "Positive case #4",
+			name: "Positive case: Set flag -f",
 			args: []string{"-f=/temp/metrics-db.test.json"},
 			want: map[string]interface{}{"fileStoragePath": "/temp/metrics-db.test.json"},
 		},
 		{
-			name: "Positive case #5A",
+			name: "Positive case: Set flag -r (true)",
 			args: []string{"-r=true"},
 			want: map[string]interface{}{"isReqRestore": true},
 		},
 		{
-			name: "Positive case #5B",
+			name: "Positive case: Set flag -r (false)",
 			args: []string{"-r=false"},
 			want: map[string]interface{}{"isReqRestore": false},
 		},
 		{
-			name: "Positive case #6",
+			name: "Positive case: Set flag -d",
 			args: []string{"-d=postgres://username:password@localhost:5432/database_name"},
 			want: map[string]interface{}{"databaseDSN": "postgres://username:password@localhost:5432/database_name"},
+		},
+		{
+			name: "Positive case: Set flag -k",
+			args: []string{"-k=secret"},
+			want: map[string]interface{}{"secretKey": "secret"},
 		},
 	}
 
@@ -137,44 +144,50 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 		want map[string]interface{}
 	}{
 		{
-			name: "Positive case #1",
+			name: "Positive case: Default values",
 			envs: nil,
 			want: map[string]interface{}{
 				"serverAddr":      "",
 				"storeInterval":   0 * time.Second,
 				"fileStoragePath": "",
 				"isReqRestore":    false,
+				"secretKey":       "",
 			},
 		},
 		{
-			name: "Positive case #2",
+			name: "Positive case: Set env ADDRESS",
 			envs: []string{"ADDRESS=example.com:8181"},
 			want: map[string]interface{}{"serverAddr": "example.com:8181"},
 		},
 		{
-			name: "Positive case #3",
+			name: "Positive case: Set env STORE_INTERVAL",
 			envs: []string{"STORE_INTERVAL=10"},
 			want: map[string]interface{}{"storeInterval": 10 * time.Second},
 		},
 		{
-			name: "Positive case #4",
+			name: "Positive case: Set env FILE_STORAGE_PATH",
 			envs: []string{"FILE_STORAGE_PATH=/temp/metrics-db.test.json"},
 			want: map[string]interface{}{"fileStoragePath": "/temp/metrics-db.test.json"},
 		},
 		{
-			name: "Positive case #5A",
+			name: "Positive case: Set env RESTORE (true)",
 			envs: []string{"RESTORE=true"},
 			want: map[string]interface{}{"isReqRestore": true},
 		},
 		{
-			name: "Positive case #5B",
+			name: "Positive case: Set env RESTORE (false)",
 			envs: []string{"RESTORE=false"},
 			want: map[string]interface{}{"isReqRestore": false},
 		},
 		{
-			name: "Positive case #6",
+			name: "Positive case: Set env DATABASE_DSN",
 			envs: []string{"DATABASE_DSN=postgres://username:password@localhost:5432/database_name"},
 			want: map[string]interface{}{"databaseDSN": "postgres://username:password@localhost:5432/database_name"},
+		},
+		{
+			name: "Positive case: Set env KEY",
+			envs: []string{"KEY=secret"},
+			want: map[string]interface{}{"secretKey": "secret"},
 		},
 	}
 
@@ -217,7 +230,7 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 		want map[string]interface{}
 	}{
 		{
-			name: "Positive case #1",
+			name: "Positive case: Default values",
 			args: nil,
 			envs: nil,
 			want: map[string]interface{}{
@@ -225,118 +238,134 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 				"storeInterval":   300 * time.Second,
 				"fileStoragePath": "/tmp/metrics-db.json",
 				"isReqRestore":    true,
+				"secretKey":       "",
 			},
 		},
 		{
-			name: "Positive case #2A",
+			name: "Positive case: Set flag -a and env ADDRESS",
 			args: []string{"-a=aaa.com:3333"},
 			envs: []string{"ADDRESS=bbb.com:5555"},
 			want: map[string]interface{}{"serverAddr": "bbb.com:5555"},
 		},
 		{
-			name: "Positive case #2B",
+			name: "Positive case: Set flag -a only",
 			args: []string{"-a=aaa.com:3333"},
 			envs: nil,
 			want: map[string]interface{}{"serverAddr": "aaa.com:3333"},
 		},
 		{
-			name: "Positive case #2C",
+			name: "Positive case: Set env ADDRESS only",
 			args: nil,
 			envs: []string{"ADDRESS=bbb.com:5555"},
 			want: map[string]interface{}{"serverAddr": "bbb.com:5555"},
 		},
 		{
-			name: "Positive case #3A",
+			name: "Positive case: Set flag -i and env STORE_INTERVAL",
 			args: []string{"-i=100"},
 			envs: []string{"STORE_INTERVAL=200"},
 			want: map[string]interface{}{"storeInterval": 200 * time.Second},
 		},
 		{
-			name: "Positive case #3B",
+			name: "Positive case: Set flag -i only",
 			args: []string{"-i=100"},
 			envs: nil,
 			want: map[string]interface{}{"storeInterval": 100 * time.Second},
 		},
 		{
-			name: "Positive case #3C",
+			name: "Positive case: Set env STORE_INTERVAL only",
 			args: nil,
 			envs: []string{"STORE_INTERVAL=200"},
 			want: map[string]interface{}{"storeInterval": 200 * time.Second},
 		},
 		{
-			name: "Positive case #4A",
+			name: "Positive case: Set flag -f and env FILE_STORAGE_PATH",
 			args: []string{"-f=/temp/metrics-db.test1.json"},
 			envs: []string{"FILE_STORAGE_PATH=/temp/metrics-db.test2.json"},
 			want: map[string]interface{}{"fileStoragePath": "/temp/metrics-db.test2.json"},
 		},
 		{
-			name: "Positive case #4B",
+			name: "Positive case: Set flag -f only",
 			args: []string{"-f=/temp/metrics-db.test1.json"},
 			envs: nil,
 			want: map[string]interface{}{"fileStoragePath": "/temp/metrics-db.test1.json"},
 		},
 		{
-			name: "Positive case #4C",
+			name: "Positive case: Set env FILE_STORAGE_PATH only",
 			args: nil,
 			envs: []string{"FILE_STORAGE_PATH=/temp/metrics-db.test2.json"},
 			want: map[string]interface{}{"fileStoragePath": "/temp/metrics-db.test2.json"},
 		},
 		{
-			name: "Positive case #5A",
+			name: "Positive case: Set flag -f (false) and env RESTORE",
 			args: []string{"-r=false"},
 			envs: []string{"RESTORE=true"},
 			want: map[string]interface{}{"isReqRestore": true},
 		},
 		{
-			name: "Positive case #5B",
+			name: "Positive case: Set flag -t (true) and env RESTORE",
 			args: []string{"-r=true"},
 			envs: []string{"RESTORE=false"},
 			want: map[string]interface{}{"isReqRestore": false},
 		},
 		{
-			name: "Positive case #5C",
+			name: "Positive case: Set flag -t (true) only",
 			args: []string{"-r=true"},
 			envs: nil,
 			want: map[string]interface{}{"isReqRestore": true},
 		},
 		{
-			name: "Positive case #5D",
+			name: "Positive case: Set flag -r (false) only",
 			args: []string{"-r=false"},
 			envs: nil,
 			want: map[string]interface{}{"isReqRestore": false},
 		},
 		{
-			name: "Positive case #5E",
+			name: "Positive case: Set env RESTORE (true) only",
 			args: nil,
 			envs: []string{"RESTORE=true"},
 			want: map[string]interface{}{"isReqRestore": true},
 		},
 		{
-			name: "Positive case #5F",
+			name: "Positive case: Set env RESTORE (false) only",
 			args: nil,
 			envs: []string{"RESTORE=false"},
 			want: map[string]interface{}{"isReqRestore": false},
 		},
 		{
-			name: "Positive case #6",
-		},
-		{
-			name: "Positive case #6A",
+			name: "Positive case: Set flag -d and env DATABASE_DSN",
 			args: []string{"-d=postgres://username1:password1@localhost:5432/database_name1"},
 			envs: []string{"DATABASE_DSN=postgres://username2:password2@localhost:5432/database_name2"},
 			want: map[string]interface{}{"databaseDSN": "postgres://username2:password2@localhost:5432/database_name2"},
 		},
 		{
-			name: "Positive case #6B",
+			name: "Positive case: Set flag -d only",
 			args: []string{"-d=postgres://username1:password1@localhost:5432/database_name1"},
 			envs: nil,
 			want: map[string]interface{}{"databaseDSN": "postgres://username1:password1@localhost:5432/database_name1"},
 		},
 		{
-			name: "Positive case #6C",
+			name: "Positive case: Set env DATABASE_DSN only",
 			args: nil,
 			envs: []string{"DATABASE_DSN=postgres://username2:password2@localhost:5432/database_name2"},
 			want: map[string]interface{}{"databaseDSN": "postgres://username2:password2@localhost:5432/database_name2"},
+		},
+		{
+			name: "Positive case: Set flag -k and env KEY",
+			args: []string{"-k=secret1"},
+			envs: []string{"KEY=secret2"},
+			want: map[string]interface{}{"secretKey": "secret2"},
+		},
+		{
+			name: "Positive case: Set flag -k only",
+			args: []string{"-k=secret"},
+			envs: nil,
+			want: map[string]interface{}{"secretKey": "secret"},
+		},
+		{
+			name: "Positive case: Set env KEY only",
+			args: nil,
+			envs: []string{"KEY=secret"},
+			want: map[string]interface{}{"secretKey": "secret"},
 		},
 	}
 

@@ -1,4 +1,4 @@
-package main
+package agent
 
 import (
 	"flag"
@@ -28,6 +28,8 @@ func (suite *FlagsTestSuite) SetupSuite() {
 		"ADDRESS",
 		"POLL_INTERVAL",
 		"REPORT_INTERVAL",
+		"KEY",
+		"RATE_LIMIT",
 	} {
 		suite.osEnviron[e] = os.Getenv(e)
 	}
@@ -67,28 +69,40 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 		want map[string]interface{}
 	}{
 		{
-			name: "Positive case #1",
+			name: "Positive case: Default values",
 			args: nil,
 			want: map[string]interface{}{
 				"serverAddr":     "localhost:8080",
 				"pollInterval":   2 * time.Second,
 				"reportInterval": 10 * time.Second,
+				"secretKey":      "",
+				"rateLimit":      uint(3),
 			},
 		},
 		{
-			name: "Positive case #2",
+			name: "Positive case: Set flag -a",
 			args: []string{"-a=example.com:8181"},
 			want: map[string]interface{}{"serverAddr": "example.com:8181"},
 		},
 		{
-			name: "Positive case #3",
+			name: "Positive case: Set flag -p",
 			args: []string{"-p=3"},
 			want: map[string]interface{}{"pollInterval": 3 * time.Second},
 		},
 		{
-			name: "Positive case #4",
+			name: "Positive case: Set flag -r",
 			args: []string{"-r=7"},
 			want: map[string]interface{}{"reportInterval": 7 * time.Second},
+		},
+		{
+			name: "Positive case: Set flag -k",
+			args: []string{"-k=secret"},
+			want: map[string]interface{}{"secretKey": "secret"},
+		},
+		{
+			name: "Positive case: Set flag -l",
+			args: []string{"-l=15"},
+			want: map[string]interface{}{"rateLimit": uint(15)},
 		},
 	}
 
@@ -98,14 +112,14 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 				os.Args = append(os.Args, tc.args...)
 			}
 
-			config := NewConfig()
+			config := newConfig()
 			config = parseFlags(config)
 
 			configFields := reflect.ValueOf(config)
 
 			for k, want := range tc.want {
 				field := configFields.FieldByName(k)
-				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'", k)
+				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'. Value is: '%v'(%v), Should be: '%v'(%v)", k, field, field.Type(), reflect.ValueOf(want), reflect.ValueOf(want).Type())
 			}
 		})
 	}
@@ -118,28 +132,40 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 		want map[string]interface{}
 	}{
 		{
-			name: "Positive case #1",
+			name: "Positive case: Default values",
 			envs: nil,
 			want: map[string]interface{}{
 				"serverAddr":     "",
 				"pollInterval":   0 * time.Second,
 				"reportInterval": 0 * time.Second,
+				"secretKey":      "",
+				"rateLimit":      uint(0),
 			},
 		},
 		{
-			name: "Positive case #2",
+			name: "Positive case: Set env ADDRESS",
 			envs: []string{"ADDRESS=example.com:8181"},
 			want: map[string]interface{}{"serverAddr": "example.com:8181"},
 		},
 		{
-			name: "Positive case #3",
+			name: "Positive case: Set env POLL_INTERVAL",
 			envs: []string{"POLL_INTERVAL=3"},
 			want: map[string]interface{}{"pollInterval": 3 * time.Second},
 		},
 		{
-			name: "Positive case #4",
+			name: "Positive case: Set env REPORT_INTERVAL",
 			envs: []string{"REPORT_INTERVAL=7"},
 			want: map[string]interface{}{"reportInterval": 7 * time.Second},
+		},
+		{
+			name: "Positive case: Set env KEY",
+			envs: []string{"KEY=secret"},
+			want: map[string]interface{}{"secretKey": "secret"},
+		},
+		{
+			name: "Positive case: Set env RATE_LIMIT",
+			envs: []string{"RATE_LIMIT=15"},
+			want: map[string]interface{}{"rateLimit": uint(15)},
 		},
 	}
 
@@ -161,14 +187,14 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 				}
 			}
 
-			config := NewConfig()
+			config := newConfig()
 			config = parseEnvs(config)
 
 			configFields := reflect.ValueOf(config)
 
 			for k, want := range tc.want {
 				field := configFields.FieldByName(k)
-				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'", k)
+				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'. Value is: '%v'(%v), Should be: '%v'(%v)", k, field, field.Type(), reflect.ValueOf(want), reflect.ValueOf(want).Type())
 			}
 		})
 	}
@@ -182,68 +208,107 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 		want map[string]interface{}
 	}{
 		{
-			name: "Positive case #1",
+			name: "Positive case: Default values",
 			args: nil,
 			envs: nil,
 			want: map[string]interface{}{
 				"serverAddr":     "localhost:8080",
 				"pollInterval":   2 * time.Second,
 				"reportInterval": 10 * time.Second,
+				"secretKey":      "",
+				"rateLimit":      uint(3),
 			},
 		},
 		{
-			name: "Positive case #2A",
+			name: "Positive case: Set flag -a and env ADDRESS",
 			args: []string{"-a=aaa.com:3333"},
 			envs: []string{"ADDRESS=bbb.com:5555"},
 			want: map[string]interface{}{"serverAddr": "bbb.com:5555"},
 		},
 		{
-			name: "Positive case #2B",
+			name: "Positive case: Set flag -a only",
 			args: []string{"-a=aaa.com:3333"},
 			envs: nil,
 			want: map[string]interface{}{"serverAddr": "aaa.com:3333"},
 		},
 		{
-			name: "Positive case #2C",
+			name: "Positive case: Set env ADDRESS only",
 			args: nil,
 			envs: []string{"ADDRESS=bbb.com:5555"},
 			want: map[string]interface{}{"serverAddr": "bbb.com:5555"},
 		},
 		{
-			name: "Positive case #3A",
+			name: "Positive case: Set flag -p and env POLL_INTERVAL",
 			args: []string{"-p=21"},
 			envs: []string{"POLL_INTERVAL=31"},
 			want: map[string]interface{}{"pollInterval": 31 * time.Second},
 		},
 		{
-			name: "Positive case #3B",
+			name: "Positive case: Set flag -p only",
 			args: []string{"-p=21"},
 			envs: nil,
 			want: map[string]interface{}{"pollInterval": 21 * time.Second},
 		},
 		{
-			name: "Positive case #3C",
+			name: "Positive case: Set env POLL_INTERVAL only",
 			args: nil,
 			envs: []string{"POLL_INTERVAL=31"},
 			want: map[string]interface{}{"pollInterval": 31 * time.Second},
 		},
 		{
-			name: "Positive case #4A",
+			name: "Positive case: Set flag -r and env REPORT_INTERVAL",
 			args: []string{"-r=51"},
 			envs: []string{"REPORT_INTERVAL=71"},
 			want: map[string]interface{}{"reportInterval": 71 * time.Second},
 		},
 		{
-			name: "Positive case #4B",
+			name: "Positive case: Set flag -r only",
 			args: []string{"-r=51"},
 			envs: nil,
 			want: map[string]interface{}{"reportInterval": 51 * time.Second},
 		},
 		{
-			name: "Positive case #4C",
+			name: "Positive case: Set env REPORT_INTERVAL only",
 			args: nil,
 			envs: []string{"REPORT_INTERVAL=71"},
 			want: map[string]interface{}{"reportInterval": 71 * time.Second},
+		},
+		{
+			name: "Positive case: Set flag -k and env KEY",
+			args: []string{"-k=secret1"},
+			envs: []string{"KEY=secret2"},
+			want: map[string]interface{}{"secretKey": "secret2"},
+		},
+		{
+			name: "Positive case: Set flag -k only",
+			args: []string{"-k=secret"},
+			envs: nil,
+			want: map[string]interface{}{"secretKey": "secret"},
+		},
+		{
+			name: "Positive case: Set env KEY only",
+			args: nil,
+			envs: []string{"KEY=secret"},
+			want: map[string]interface{}{"secretKey": "secret"},
+		},
+		////////
+		{
+			name: "Positive case: Set flag -l and env RATE_LIMIT",
+			args: []string{"-l=15"},
+			envs: []string{"RATE_LIMIT=25"},
+			want: map[string]interface{}{"rateLimit": uint(25)},
+		},
+		{
+			name: "Positive case: Set flag -l only",
+			args: []string{"-l=15"},
+			envs: nil,
+			want: map[string]interface{}{"rateLimit": uint(15)},
+		},
+		{
+			name: "Positive case: Set env RATE_LIMIT only",
+			args: nil,
+			envs: []string{"RATE_LIMIT=15"},
+			want: map[string]interface{}{"rateLimit": uint(15)},
 		},
 	}
 
@@ -275,7 +340,7 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 
 			for k, want := range tc.want {
 				field := configFields.FieldByName(k)
-				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'", k)
+				suite.Assert().Truef(field.Equal(reflect.ValueOf(want)), "Invalid value for '%s'. Value is: '%v'(%v), Should be: '%v'(%v)", k, field, field.Type(), reflect.ValueOf(want), reflect.ValueOf(want).Type())
 			}
 		})
 	}

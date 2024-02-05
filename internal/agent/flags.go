@@ -1,4 +1,4 @@
-package main
+package agent
 
 import (
 	"flag"
@@ -9,15 +9,15 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 )
 
-func loadConfig() Config {
-	config := NewConfig()
+func loadConfig() config {
+	config := newConfig()
 	config = parseFlags(config)
 	config = parseEnvs(config)
 
 	return config
 }
 
-func parseFlags(config Config) Config {
+func parseFlags(config config) config {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
 	// Флаг -a=<ЗНАЧЕНИЕ> отвечает за адрес эндпоинта HTTP-сервера (по умолчанию localhost:8080).
@@ -29,19 +29,29 @@ func parseFlags(config Config) Config {
 	// Флаг -r=<ЗНАЧЕНИЕ> позволяет переопределять reportInterval — частоту отправки метрик на сервер (по умолчанию 10 секунд).
 	reportInterval := flag.Uint("r", 10, "frequency of sending metrics to the server (in seconds)")
 
+	// Флаг -k=<КЛЮЧ> Ключ для подписи данных
+	secretKey := flag.String("k", "", "Secret key for signing data")
+
+	// Флаг -l=<ЗНАЧЕНИЕ> Количество одновременно исходящих запросов
+	rateLimit := flag.Uint("l", 3, "Количество одновременно исходящих запросов")
+
 	flag.Parse()
 
 	return config.
 		SetServerAddr(*serverAddr).
 		SetPollIntervalInSeconds(*pollInterval).
-		SetReportIntervalInSeconds(*reportInterval)
+		SetReportIntervalInSeconds(*reportInterval).
+		SetSecretKey(*secretKey).
+		SetRateLimit(*rateLimit)
 }
 
-func parseEnvs(config Config) Config {
+func parseEnvs(config config) config {
 	var cfg struct {
 		ServerAddr     string `env:"ADDRESS"`
 		PollInterval   uint   `env:"POLL_INTERVAL"`
 		ReportInterval uint   `env:"REPORT_INTERVAL"`
+		SecretKey      string `env:"KEY"`
+		RateLimit      uint   `env:"RATE_LIMIT"`
 	}
 	err := env.Parse(&cfg)
 	if err != nil {
@@ -56,6 +66,12 @@ func parseEnvs(config Config) Config {
 	}
 	if _, exists := os.LookupEnv("REPORT_INTERVAL"); exists {
 		config = config.SetReportIntervalInSeconds(cfg.ReportInterval)
+	}
+	if _, exists := os.LookupEnv("KEY"); exists {
+		config = config.SetSecretKey(cfg.SecretKey)
+	}
+	if _, exists := os.LookupEnv("RATE_LIMIT"); exists {
+		config = config.SetRateLimit(cfg.RateLimit)
 	}
 
 	return config
