@@ -38,22 +38,20 @@ func (fs *FileStorage) SetIsSyncSave(isSyncSave bool) {
 
 // Save metrics values into a file
 func (fs *FileStorage) Save() error {
-	fs.muFile.Lock()
-	defer fs.muFile.Unlock()
-
 	if fs.filename == "" {
 		return ErrEmptyFilename
 	}
+
+	fs.muFile.Lock()
+	defer fs.muFile.Unlock()
 
 	file, err := os.OpenFile(fs.filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
 	if err != nil {
 		return err
 	}
-
 	defer file.Close()
 
 	encoder := json.NewEncoder(file)
-
 	err = encoder.Encode(&fs)
 	if err != nil {
 		return err
@@ -72,22 +70,20 @@ func (fs *FileStorage) SyncSave() error {
 
 // Load reads metric values from a file.
 func (fs *FileStorage) Load() error {
-	fs.muFile.Lock()
-	defer fs.muFile.Unlock()
-
 	if fs.filename == "" {
 		return ErrEmptyFilename
 	}
+
+	fs.muFile.Lock()
+	defer fs.muFile.Unlock()
 
 	file, err := os.OpenFile(fs.filename, os.O_RDONLY, 0)
 	if err != nil {
 		return err
 	}
-
 	defer file.Close()
 
 	decoder := json.NewDecoder(file)
-
 	if err = decoder.Decode(&fs); err != nil {
 		return err
 	}

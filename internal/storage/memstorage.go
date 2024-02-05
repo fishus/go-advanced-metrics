@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
+
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
@@ -11,6 +13,8 @@ import (
 type MemStorage struct {
 	gauges   map[string]metrics.Gauge
 	counters map[string]metrics.Counter
+	mu       sync.RWMutex
+	Mi       sync.RWMutex
 }
 
 func NewMemStorage() *MemStorage {
@@ -27,6 +31,9 @@ func (m *MemStorage) Gauge(name string) (metrics.Gauge, bool) {
 
 // GaugeContext returns the gauge metric by name
 func (m *MemStorage) GaugeContext(ctx context.Context, name string) (metrics.Gauge, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	if v, ok := m.gauges[name]; ok {
 		return v, ok
 	} else {
@@ -41,6 +48,9 @@ func (m *MemStorage) GaugeValue(name string) (float64, bool) {
 
 // GaugeValueContext returns the gauge metric value by name
 func (m *MemStorage) GaugeValueContext(ctx context.Context, name string) (float64, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	if gauge, ok := m.gauges[name]; ok {
 		return gauge.Value(), ok
 	}
@@ -54,6 +64,9 @@ func (m *MemStorage) Gauges(filters ...StorageFilter) map[string]metrics.Gauge {
 
 // GaugesContext returns all gauge metrics
 func (m *MemStorage) GaugesContext(ctx context.Context, filters ...StorageFilter) map[string]metrics.Gauge {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	f := &StorageFilters{}
 	for _, filter := range filters {
 		filter(f)
@@ -79,6 +92,9 @@ func (m *MemStorage) SetGauge(name string, value float64) error {
 }
 
 func (m *MemStorage) SetGaugeContext(ctx context.Context, name string, value float64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if m.gauges == nil {
 		m.gauges = make(map[string]metrics.Gauge)
 	}
@@ -100,6 +116,9 @@ func (m *MemStorage) SetGaugeContext(ctx context.Context, name string, value flo
 }
 
 func (m *MemStorage) ResetGauges() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.gauges = make(map[string]metrics.Gauge)
 	return nil
 }
@@ -111,6 +130,9 @@ func (m *MemStorage) Counter(name string) (metrics.Counter, bool) {
 
 // CounterContext returns the counter metric by name
 func (m *MemStorage) CounterContext(ctx context.Context, name string) (metrics.Counter, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	if v, ok := m.counters[name]; ok {
 		return v, ok
 	}
@@ -124,6 +146,9 @@ func (m *MemStorage) CounterValue(name string) (int64, bool) {
 
 // CounterValueContext returns the counter metric value by name
 func (m *MemStorage) CounterValueContext(ctx context.Context, name string) (int64, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	if v, ok := m.counters[name]; ok {
 		return v.Value(), ok
 	}
@@ -137,6 +162,9 @@ func (m *MemStorage) Counters(filters ...StorageFilter) map[string]metrics.Count
 
 // CountersContext returns all counter metrics
 func (m *MemStorage) CountersContext(ctx context.Context, filters ...StorageFilter) map[string]metrics.Counter {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	f := &StorageFilters{}
 	for _, filter := range filters {
 		filter(f)
@@ -162,6 +190,9 @@ func (m *MemStorage) AddCounter(name string, value int64) error {
 }
 
 func (m *MemStorage) AddCounterContext(ctx context.Context, name string, value int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if m.counters == nil {
 		m.counters = make(map[string]metrics.Counter)
 	}
@@ -183,6 +214,9 @@ func (m *MemStorage) AddCounterContext(ctx context.Context, name string, value i
 }
 
 func (m *MemStorage) ResetCounters() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.counters = make(map[string]metrics.Counter)
 	return nil
 }
@@ -253,6 +287,9 @@ func (m *MemStorage) InsertBatchContext(ctx context.Context, opts ...StorageOpti
 }
 
 func (m *MemStorage) MarshalJSON() ([]byte, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	return json.Marshal(&struct {
 		Gauges   map[string]metrics.Gauge   `json:"gauges"`
 		Counters map[string]metrics.Counter `json:"counters"`
@@ -263,6 +300,9 @@ func (m *MemStorage) MarshalJSON() ([]byte, error) {
 }
 
 func (m *MemStorage) UnmarshalJSON(data []byte) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	aux := &struct {
 		Gauges   map[string]metrics.Gauge   `json:"gauges"`
 		Counters map[string]metrics.Counter `json:"counters"`
