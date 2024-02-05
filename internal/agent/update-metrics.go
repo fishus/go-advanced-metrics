@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -37,12 +38,10 @@ func collectMetricsAtIntervals(ctx context.Context) chan storage.MemStorage {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				channels := make([]chan storage.MemStorage, 2)
-				channels[0] = collectRuntimeMetrics(ctx)
-				channels[1] = collectPsMetrics(ctx)
-
-				data := combineMetrics(ctx, channels...)
-				dataCh <- data
+				data := collectMetrics(ctx)
+				if data != nil {
+					dataCh <- *data
+				}
 			}
 		}
 	}()
@@ -50,60 +49,66 @@ func collectMetricsAtIntervals(ctx context.Context) chan storage.MemStorage {
 	return dataCh
 }
 
-func combineMetrics(ctx context.Context, channels ...chan storage.MemStorage) storage.MemStorage {
-	data := storage.NewMemStorage()
-
+func collectMetrics(ctx context.Context) *storage.MemStorage {
 	select {
 	case <-ctx.Done():
-		return *data
+		return nil
 	default:
 	}
 
-	for _, ch := range channels {
-		for cData := range ch {
-			for _, g := range cData.Gauges() {
-				_ = data.SetGauge(g.Name(), g.Value())
-			}
-			for _, c := range cData.Counters() {
-				_ = data.AddCounter(c.Name(), c.Value())
-			}
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	var mRuntime *storage.MemStorage
+	go func() {
+		mRuntime = collector.CollectRuntimeMetrics(ctx)
+		wg.Done()
+	}()
+
+	var mPs *storage.MemStorage
+	go func() {
+		mPs = collector.CollectPsMetrics(ctx)
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	ms := make([]storage.MemStorage, 2)
+
+	if mRuntime != nil {
+		ms = append(ms, *mRuntime)
+	}
+
+	if mPs != nil {
+		ms = append(ms, *mPs)
+	}
+
+	return combineMetrics(ctx, ms...)
+}
+
+func combineMetrics(ctx context.Context, ms ...storage.MemStorage) *storage.MemStorage {
+	select {
+	case <-ctx.Done():
+		return nil
+	default:
+	}
+
+	data := storage.NewMemStorage()
+
+	for _, m := range ms {
+		for _, g := range m.Gauges() {
+			_ = data.SetGauge(g.Name(), g.Value())
+		}
+		for _, c := range m.Counters() {
+			_ = data.AddCounter(c.Name(), c.Value())
 		}
 	}
-	return *data
-}
 
-func collectRuntimeMetrics(ctx context.Context) chan storage.MemStorage {
-	dataCh := make(chan storage.MemStorage)
+	if len(data.Gauges()) == 0 && len(data.Counters()) == 0 {
+		return nil
+	}
 
-	go func() {
-		defer close(dataCh)
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
-		data := collector.CollectRuntimeMetrics(ctx)
-		dataCh <- *data
-	}()
-
-	return dataCh
-}
-
-func collectPsMetrics(ctx context.Context) chan storage.MemStorage {
-	dataCh := make(chan storage.MemStorage)
-
-	go func() {
-		defer close(dataCh)
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
-		data := collector.CollectPsMetrics(ctx)
-		dataCh <- *data
-	}()
-
-	return dataCh
+	return data
 }
 
 // postMetricsAtIntervals posts collected metrics every {options.reportInterval} seconds
