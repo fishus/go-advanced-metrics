@@ -27,8 +27,8 @@ func CollectAndPostMetrics(ctx context.Context) {
 }
 
 // collectMetricsAtIntervals collects metrics every {options.pollInterval} seconds
-func collectMetricsAtIntervals(ctx context.Context) chan storage.MemStorage {
-	dataCh := make(chan storage.MemStorage, 10)
+func collectMetricsAtIntervals(ctx context.Context) chan *storage.MemStorage {
+	dataCh := make(chan *storage.MemStorage, 10)
 
 	go func() {
 		defer close(dataCh)
@@ -40,7 +40,7 @@ func collectMetricsAtIntervals(ctx context.Context) chan storage.MemStorage {
 			case <-ticker.C:
 				data := collectMetrics(ctx)
 				if data != nil {
-					dataCh <- *data
+					dataCh <- data
 				}
 			}
 		}
@@ -73,20 +73,20 @@ func collectMetrics(ctx context.Context) *storage.MemStorage {
 
 	wg.Wait()
 
-	ms := make([]storage.MemStorage, 2)
+	ms := make([]*storage.MemStorage, 0, 2)
 
 	if mRuntime != nil {
-		ms = append(ms, *mRuntime)
+		ms = append(ms, mRuntime)
 	}
 
 	if mPs != nil {
-		ms = append(ms, *mPs)
+		ms = append(ms, mPs)
 	}
 
 	return combineMetrics(ctx, ms...)
 }
 
-func combineMetrics(ctx context.Context, ms ...storage.MemStorage) *storage.MemStorage {
+func combineMetrics(ctx context.Context, ms ...*storage.MemStorage) *storage.MemStorage {
 	select {
 	case <-ctx.Done():
 		return nil
@@ -112,9 +112,9 @@ func combineMetrics(ctx context.Context, ms ...storage.MemStorage) *storage.MemS
 }
 
 // postMetricsAtIntervals posts collected metrics every {options.reportInterval} seconds
-func postMetricsAtIntervals(ctx context.Context, dataCh <-chan storage.MemStorage) {
-	dataBuf := make([]storage.MemStorage, 0)
-	workerCh := make(chan storage.MemStorage, (Config.RateLimit()))
+func postMetricsAtIntervals(ctx context.Context, dataCh <-chan *storage.MemStorage) {
+	dataBuf := make([]*storage.MemStorage, 0)
+	workerCh := make(chan *storage.MemStorage, Config.RateLimit())
 	defer close(workerCh)
 
 	for w := 1; w <= int(Config.RateLimit()); w++ {
@@ -127,7 +127,9 @@ func postMetricsAtIntervals(ctx context.Context, dataCh <-chan storage.MemStorag
 		case <-ctx.Done():
 			return
 		case data := <-dataCh:
-			dataBuf = append(dataBuf, data)
+			if data != nil {
+				dataBuf = append(dataBuf, data)
+			}
 		case <-ticker.C:
 			for _, data := range dataBuf {
 				workerCh <- data
@@ -138,7 +140,7 @@ func postMetricsAtIntervals(ctx context.Context, dataCh <-chan storage.MemStorag
 }
 
 // workerPostMetrics posts collected metrics
-func workerPostMetrics(ctx context.Context, dataCh <-chan storage.MemStorage) {
+func workerPostMetrics(ctx context.Context, dataCh <-chan *storage.MemStorage) {
 	select {
 	case <-ctx.Done():
 		return
@@ -264,7 +266,7 @@ func postMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, bat
 	return nil
 }
 
-func retryPostMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, data storage.MemStorage) error {
+func retryPostMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, data *storage.MemStorage) error {
 	var err error
 	var neterr *net.OpError
 
@@ -283,7 +285,7 @@ func retryPostMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer
 		default:
 		}
 
-		batch := packMetricsIntoBatch(&data)
+		batch := packMetricsIntoBatch(data)
 		err = postMetrics(ctx, client, gz, batch)
 
 		errors.As(err, &neterr)
