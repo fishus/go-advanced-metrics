@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/fishus/go-advanced-metrics/internal/secure"
 )
@@ -33,31 +34,40 @@ type signWriter struct {
 	Sign       *secure.Sign
 	Buf        *bytes.Buffer
 	statusCode int
+	once       sync.Once
 }
 
 func (w *signWriter) Write(b []byte) (int, error) {
-	w.Buf.Write(b)
-	return w.Sign.Write(b)
+	w.Sign.Write(b)
+	return w.Buf.Write(b)
 }
 
-func (w *signWriter) WriteHeader(statusCode int) {
-	w.statusCode = statusCode
+func (w *signWriter) WriteHeader(code int) {
+	w.statusCode = code
 }
 
 func (w *signWriter) Close() error {
-	hash := w.Sign.Sum()
-	hashString := hex.EncodeToString(hash)
+	var err error
 
-	w.ResponseWriter.Header().Set("HashSHA256", hashString)
+	w.once.Do(func() {
+		hash := w.Sign.Sum()
+		hashString := hex.EncodeToString(hash)
+		w.ResponseWriter.Header().Set("HashSHA256", hashString)
 
-	if w.statusCode > 0 {
-		w.ResponseWriter.WriteHeader(w.statusCode)
-	}
+		if w.statusCode > 0 {
+			w.ResponseWriter.WriteHeader(w.statusCode)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
 
-	w.ResponseWriter.Write(w.Buf.Bytes())
+		w.ResponseWriter.Write(w.Buf.Bytes())
 
-	if c, ok := w.ResponseWriter.(io.WriteCloser); ok {
-		return c.Close()
-	}
-	return errors.New("io.WriteCloser is unavailable on the writer")
+		if c, ok := w.ResponseWriter.(io.WriteCloser); ok {
+			err = c.Close()
+			return
+		}
+		err = errors.New("io.WriteCloser is unavailable on the writer")
+	})
+
+	return err
 }

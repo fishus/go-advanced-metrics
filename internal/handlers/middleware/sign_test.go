@@ -72,6 +72,7 @@ func (s *SignSuite) TestSign() {
 			resp := s.sendRequest(data)
 			respHashString := resp.Header().Get("HashSHA256")
 			s.Equal(tc.wantHash(data), respHashString)
+			s.Equal(data, resp.Body())
 		})
 	}
 }
