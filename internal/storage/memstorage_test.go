@@ -317,6 +317,14 @@ func TestMemStorage_SetGauge(t *testing.T) {
 	}
 }
 
+func BenchmarkMemStorage_SetGauge(b *testing.B) {
+	m := &MemStorage{}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.SetGauge("a", 123.45)
+	}
+}
+
 func TestMemStorage_Counter(t *testing.T) {
 	type counter struct {
 		name  string
