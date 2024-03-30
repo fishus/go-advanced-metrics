@@ -65,6 +65,5 @@ func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		// При попытке передать запрос с некорректным типом метрики http.StatusBadRequest.
 		http.Error(w, `Incorrect metric type`, http.StatusBadRequest)
-		return
 	}
 }

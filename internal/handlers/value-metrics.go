@@ -64,6 +64,5 @@ func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(metric); err != nil {
 		logger.Log.Debug(err.Error(), logger.Any("data", metric))
-		return
 	}
 }
