@@ -29,7 +29,6 @@ func (s *SignSuite) SetupSuite() {
 		w.WriteHeader(http.StatusOK)
 		_, err := io.Copy(w, r.Body)
 		s.Require().NoError(err)
-		defer r.Body.Close()
 	})
 
 	s.ts = httptest.NewServer(r)

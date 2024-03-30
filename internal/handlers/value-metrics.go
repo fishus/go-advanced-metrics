@@ -11,8 +11,6 @@ import (
 
 // ValueMetricsHandler returns metrics data in JSON format
 func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
 	var metric metrics.Metrics
 
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {

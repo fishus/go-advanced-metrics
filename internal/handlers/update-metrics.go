@@ -13,8 +13,6 @@ import (
 // UpdateMetricsHandler processes a request like POST /update/
 // Store data sent in JSON format
 func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
 	var metric metrics.Metrics
 
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
