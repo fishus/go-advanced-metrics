@@ -12,7 +12,8 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
-// ValueMetricHandler returns metrics data
+// ValueMetricHandler processes the request GET /value/{metricType}/{metricID}.
+// Returns the metric value.
 func ValueMetricHandler(w http.ResponseWriter, r *http.Request) {
 	var metricType, metricID string
 

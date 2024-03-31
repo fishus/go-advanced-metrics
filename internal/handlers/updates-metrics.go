@@ -10,8 +10,8 @@ import (
 	store "github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
-// UpdatesMetricsHandler processes a request like POST /updates/
-// Store a batch of metrics in JSON format
+// UpdatesMetricsHandler processes the request POST /updates/.
+// Receives a batch of metrics data in JSON format and stores their values.
 func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	var metricsBatch []metrics.Metrics
 

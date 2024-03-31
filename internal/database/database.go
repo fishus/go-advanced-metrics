@@ -62,6 +62,10 @@ func Pool() (Connector, error) {
 	return pool, nil
 }
 
+func SetPool(p Connector) {
+	pool = p
+}
+
 func IsConnectionException(err error) bool {
 	var connErr *pgconn.ConnectError
 	var pgErr *pgconn.PgError
