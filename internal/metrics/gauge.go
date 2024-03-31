@@ -5,11 +5,13 @@ import (
 	"errors"
 )
 
+// Gauge implements the metric type Gauge.
 type Gauge struct {
 	name  string
 	value float64
 }
 
+// NewGauge returns a pointer to the Gauge structure.
 func NewGauge(name string, v float64) (*Gauge, error) {
 	if name == "" {
 		return nil, errors.New("name cannot be empty")
@@ -22,19 +24,23 @@ func NewGauge(name string, v float64) (*Gauge, error) {
 	return &gauge, nil
 }
 
+// Name returns the name of the gauge.
 func (g Gauge) Name() string {
 	return g.name
 }
 
+// Value returns the gauge value.
 func (g Gauge) Value() float64 {
 	return g.value
 }
 
+// SetValue stores the new metric value.
 func (g *Gauge) SetValue(v float64) error {
 	g.value = v
 	return nil
 }
 
+// MarshalJSON implements the Marshaler interface.
 func (g Gauge) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		Name  string  `json:"name"`
@@ -45,6 +51,7 @@ func (g Gauge) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// UnmarshalJSON implements the Unmarshaler interface.
 func (g *Gauge) UnmarshalJSON(data []byte) error {
 	aux := &struct {
 		Name  string  `json:"name"`

@@ -11,6 +11,7 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/secure"
 )
 
+// Sign adds a signature to the response contents in the headers.
 func Sign(key []byte) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
