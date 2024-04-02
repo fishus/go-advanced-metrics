@@ -29,7 +29,6 @@ func (s *SignSuite) SetupSuite() {
 		w.WriteHeader(http.StatusOK)
 		_, err := io.Copy(w, r.Body)
 		s.Require().NoError(err)
-		defer r.Body.Close()
 	})
 
 	s.ts = httptest.NewServer(r)
@@ -72,6 +71,7 @@ func (s *SignSuite) TestSign() {
 			resp := s.sendRequest(data)
 			respHashString := resp.Header().Get("HashSHA256")
 			s.Equal(tc.wantHash(data), respHashString)
+			s.Equal(data, resp.Body())
 		})
 	}
 }

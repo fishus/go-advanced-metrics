@@ -318,6 +318,8 @@ func (m *MemStorage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-var _ MetricsStorager = (*MemStorage)(nil)
-var _ json.Marshaler = (*MemStorage)(nil)
-var _ json.Unmarshaler = (*MemStorage)(nil)
+var (
+	_ MetricsStorager  = (*MemStorage)(nil)
+	_ json.Marshaler   = (*MemStorage)(nil)
+	_ json.Unmarshaler = (*MemStorage)(nil)
+)

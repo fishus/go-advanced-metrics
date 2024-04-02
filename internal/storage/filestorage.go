@@ -91,9 +91,11 @@ func (fs *FileStorage) Load() error {
 	return nil
 }
 
-var _ MetricsStorager = (*FileStorage)(nil)
-var _ json.Marshaler = (*FileStorage)(nil)
-var _ json.Unmarshaler = (*FileStorage)(nil)
-var _ Saver = (*FileStorage)(nil)
-var _ SyncSaver = (*FileStorage)(nil)
-var _ Loader = (*FileStorage)(nil)
+var (
+	_ MetricsStorager  = (*FileStorage)(nil)
+	_ json.Marshaler   = (*FileStorage)(nil)
+	_ json.Unmarshaler = (*FileStorage)(nil)
+	_ Saver            = (*FileStorage)(nil)
+	_ SyncSaver        = (*FileStorage)(nil)
+	_ Loader           = (*FileStorage)(nil)
+)

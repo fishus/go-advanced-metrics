@@ -8,6 +8,8 @@ import (
 	db "github.com/fishus/go-advanced-metrics/internal/database"
 )
 
+// PingDBHandler processes the request GET /ping.
+// Checks the connection to the database.
 func PingDBHandler(w http.ResponseWriter, r *http.Request) {
 	dbPool, err := db.Pool()
 	if err != nil {

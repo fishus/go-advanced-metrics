@@ -5,11 +5,13 @@ import (
 	"errors"
 )
 
+// Counter implements the metric type Counter.
 type Counter struct {
 	name  string
 	value int64
 }
 
+// NewCounter returns a pointer to the Counter structure.
 func NewCounter(name string, v int64) (*Counter, error) {
 	if name == "" {
 		return nil, errors.New("name cannot be empty")
@@ -21,14 +23,17 @@ func NewCounter(name string, v int64) (*Counter, error) {
 	return counter, nil
 }
 
+// Name returns the name of the counter.
 func (c Counter) Name() string {
 	return c.name
 }
 
+// Value returns the counter value.
 func (c Counter) Value() int64 {
 	return c.value
 }
 
+// AddValue increases the counter value.
 func (c *Counter) AddValue(v int64) error {
 	if v < 0 {
 		return errors.New(`metrics: the counter value must be positive`)
@@ -37,6 +42,7 @@ func (c *Counter) AddValue(v int64) error {
 	return nil
 }
 
+// MarshalJSON implements the Marshaler interface.
 func (c Counter) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&struct {
 		Name  string `json:"name"`
@@ -47,6 +53,7 @@ func (c Counter) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// UnmarshalJSON implements the Unmarshaler interface.
 func (c *Counter) UnmarshalJSON(data []byte) error {
 	aux := &struct {
 		Name  string `json:"name"`

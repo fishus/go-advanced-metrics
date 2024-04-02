@@ -8,6 +8,8 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
+// ListHandler processes the request GET /.
+// Returns the values of all metrics.
 func ListHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)

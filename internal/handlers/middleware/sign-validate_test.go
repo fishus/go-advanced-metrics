@@ -26,7 +26,6 @@ func (s *ValidateSignSuite) SetupSuite() {
 	r.Post("/test/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		defer r.Body.Close()
 	})
 
 	s.ts = httptest.NewServer(r)

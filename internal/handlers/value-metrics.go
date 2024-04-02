@@ -9,10 +9,9 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 )
 
-// ValueMetricsHandler returns metrics data in JSON format
+// ValueMetricsHandler processes the request POST /value/.
+// Returns metric data in JSON format.
 func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
 	var metric metrics.Metrics
 
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
@@ -66,6 +65,5 @@ func ValueMetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewEncoder(w).Encode(metric); err != nil {
 		logger.Log.Debug(err.Error(), logger.Any("data", metric))
-		return
 	}
 }

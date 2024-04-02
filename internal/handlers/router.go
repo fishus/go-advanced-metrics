@@ -20,6 +20,8 @@ func ServerRouter() chi.Router {
 	r.Use(middleware.Compress(9, "application/json", "text/html"))
 	r.Use(middleware.RequestLogger(&logger.LogFormatter{}))
 
+	r.Mount("/debug", middleware.Profiler())
+
 	r.Post("/update/", UpdateMetricsHandler)
 	r.Post("/updates/", UpdatesMetricsHandler)
 	r.Post("/update/{metricType}/{metricID}/{metricValue}", UpdateMetricHandler)

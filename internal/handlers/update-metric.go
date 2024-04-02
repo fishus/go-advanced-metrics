@@ -12,8 +12,8 @@ import (
 	store "github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
-// UpdateMetricHandler processes a request like POST /update/{metricType}/{metricID}/{metricValue}
-// Stores metric data by type and name
+// UpdateMetricHandler processes the request POST /update/{metricType}/{metricID}/{metricValue}.
+// Receives metric data and stores its value.
 func UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 	var metric metrics.Metrics
 
