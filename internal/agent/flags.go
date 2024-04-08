@@ -48,9 +48,9 @@ func parseFlags(config config) config {
 func parseEnvs(config config) config {
 	var cfg struct {
 		ServerAddr     string `env:"ADDRESS"`
+		SecretKey      string `env:"KEY"`
 		PollInterval   uint   `env:"POLL_INTERVAL"`
 		ReportInterval uint   `env:"REPORT_INTERVAL"`
-		SecretKey      string `env:"KEY"`
 		RateLimit      uint   `env:"RATE_LIMIT"`
 	}
 	err := env.Parse(&cfg)

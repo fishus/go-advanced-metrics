@@ -8,8 +8,8 @@ import (
 )
 
 type ValidMetricError struct {
-	HTTPCode int
 	Err      error
+	HTTPCode int
 }
 
 func (ve *ValidMetricError) Error() string {
