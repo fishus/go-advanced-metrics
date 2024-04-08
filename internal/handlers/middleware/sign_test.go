@@ -51,9 +51,9 @@ func (s *SignSuite) sendRequest(data []byte) *resty.Response {
 
 func (s *SignSuite) TestSign() {
 	testCases := []struct {
+		wantHash func(data []byte) string
 		name     string
 		data     string
-		wantHash func(data []byte) string
 	}{
 		{
 			name: "Positive",

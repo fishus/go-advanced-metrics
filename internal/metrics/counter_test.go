@@ -49,8 +49,8 @@ func TestNewCounter(t *testing.T) {
 func TestCounter_AddValue(t *testing.T) {
 	testCases := []struct {
 		name    string
-		value   int64
 		counter Counter
+		value   int64
 		want    int64
 		wantErr bool
 	}{

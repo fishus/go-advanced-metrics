@@ -13,8 +13,8 @@ import (
 
 type FlagsTestSuite struct {
 	suite.Suite
-	osArgs    []string
 	osEnviron map[string]string
+	osArgs    []string
 }
 
 func (suite *FlagsTestSuite) SetupSuite() {
@@ -65,8 +65,8 @@ func (suite *FlagsTestSuite) SetupSubTest() {
 func (suite *FlagsTestSuite) TestParseFlags() {
 	testCases := []struct {
 		name string
-		args []string
 		want map[string]interface{}
+		args []string
 	}{
 		{
 			name: "Positive case: Default values",
@@ -128,8 +128,8 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 func (suite *FlagsTestSuite) TestParseEnvs() {
 	testCases := []struct {
 		name string
-		envs []string
 		want map[string]interface{}
+		envs []string
 	}{
 		{
 			name: "Positive case: Default values",
@@ -203,9 +203,9 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 func (suite *FlagsTestSuite) TestLoadConfig() {
 	testCases := []struct {
 		name string
+		want map[string]interface{}
 		args []string
 		envs []string
-		want map[string]interface{}
 	}{
 		{
 			name: "Positive case: Default values",

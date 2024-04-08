@@ -37,7 +37,7 @@ func ExampleValueMetricsHandler_gauge() {
 
 	// Output:
 	// 200
-	// {"id":"a","type":"gauge","value":20.3}
+	// {"value":20.3,"id":"a","type":"gauge"}
 }
 
 func ExampleValueMetricsHandler_counter() {
@@ -66,5 +66,5 @@ func ExampleValueMetricsHandler_counter() {
 
 	// Output:
 	// 200
-	// {"id":"a","type":"counter","delta":10}
+	// {"delta":10,"id":"a","type":"counter"}
 }
