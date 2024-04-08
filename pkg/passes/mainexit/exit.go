@@ -1,8 +1,9 @@
-// Fнализатор, запрещающий использовать прямой вызов os.Exit в функции main пакета main.
+// Package mainexit Анализатор, запрещающий использовать прямой вызов os.Exit в функции main пакета main.
 package mainexit
 
 import (
 	"go/ast"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -14,7 +15,17 @@ var Analyzer = &analysis.Analyzer{
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
+skipGenerated:
 	for _, file := range pass.Files {
+		for _, cg := range file.Comments {
+			for _, c := range cg.List {
+				// Skip generated files
+				if strings.Contains(c.Text, "DO NOT EDIT") {
+					continue skipGenerated
+				}
+			}
+		}
+
 		if file.Name.Name != "main" {
 			continue
 		}
