@@ -10,11 +10,11 @@ import (
 )
 
 func loadConfig() config {
-	config := newConfig()
-	config = parseFlags(config)
-	config = parseEnvs(config)
+	conf := newConfig()
+	conf = parseFlags(conf)
+	conf = parseEnvs(conf)
 
-	return config
+	return conf
 }
 
 func parseFlags(config config) config {
