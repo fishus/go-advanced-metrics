@@ -13,9 +13,15 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
+var buildVersion string
+var buildDate string
+var buildCommit string
+
 var config Config
 
 func main() {
+	app.PrintBuildInfo(buildVersion, buildDate, buildCommit)
+
 	config = loadConfig()
 	if err := logger.Initialize(config.logLevel); err != nil {
 		panic(err)
