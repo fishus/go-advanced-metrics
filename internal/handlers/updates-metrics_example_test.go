@@ -79,24 +79,24 @@ func ExampleUpdatesMetricsHandler() {
 	// 200
 	// [
 	//     {
+	//         "delta": 6,
 	//         "id": "a",
-	//         "type": "counter",
-	//         "delta": 6
+	//         "type": "counter"
 	//     },
 	//     {
+	//         "delta": 5,
 	//         "id": "b",
-	//         "type": "counter",
-	//         "delta": 5
+	//         "type": "counter"
 	//     },
 	//     {
+	//         "value": 23.45,
 	//         "id": "a",
-	//         "type": "gauge",
-	//         "value": 23.45
+	//         "type": "gauge"
 	//     },
 	//     {
+	//         "value": 43.21,
 	//         "id": "b",
-	//         "type": "gauge",
-	//         "value": 43.21
+	//         "type": "gauge"
 	//     }
 	// ]
 }

@@ -13,8 +13,8 @@ func Hash(data, key []byte) []byte {
 }
 
 type Sign struct {
-	key  []byte
 	hash hash.Hash
+	key  []byte
 }
 
 func (s *Sign) SetKey(key []byte) {

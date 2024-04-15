@@ -13,10 +13,10 @@ var ErrEmptyFilename = errors.New("filename for store metrics data is empty")
 
 // FileStorage contains a set of values for all metrics and store its in file
 type FileStorage struct {
+	filename string
 	MemStorage
-	filename   string
-	isSyncSave bool
 	muFile     sync.Mutex
+	isSyncSave bool
 }
 
 func NewFileStorage(filename string) *FileStorage {

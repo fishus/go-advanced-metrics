@@ -11,11 +11,11 @@ import (
 
 func TestSetMetricGauge(t *testing.T) {
 	testCases := []struct {
+		data    func() *storage.MemStorage
+		want    func() *storage.MemStorage
 		name    string
 		key     string
 		value   float64
-		data    func() *storage.MemStorage
-		want    func() *storage.MemStorage
 		wantErr bool
 	}{
 		{
@@ -111,11 +111,11 @@ func TestSetMetricGauge(t *testing.T) {
 
 func TestAddMetricCounter(t *testing.T) {
 	testCases := []struct {
+		data    func() *storage.MemStorage
+		want    func() *storage.MemStorage
 		name    string
 		key     string
 		value   int64
-		data    func() *storage.MemStorage
-		want    func() *storage.MemStorage
 		wantErr bool
 	}{
 		{

@@ -147,10 +147,10 @@ func TestFileStorage_Save(t *testing.T) {
 
 func TestFileStorage_Load(t *testing.T) {
 	testCases := []struct {
-		name     string
 		filename func() string
-		data     string
 		want     *FileStorage
+		name     string
+		data     string
 		wantErr  bool
 	}{
 		{

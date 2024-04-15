@@ -49,8 +49,8 @@ func (s *ValidateSignSuite) sendRequest(hashString string, data []byte) *resty.R
 
 func (s *ValidateSignSuite) TestValidateSign() {
 	testCases := []struct {
-		name       string
 		hashString func(data []byte) string
+		name       string
 		wantCode   int
 	}{
 		{

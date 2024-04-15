@@ -8,7 +8,13 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 )
 
+var buildVersion string
+var buildDate string
+var buildCommit string
+
 func main() {
+	app.PrintBuildInfo(buildVersion, buildDate, buildCommit)
+
 	_ = agent.Initialize()
 	if err := logger.Initialize(agent.Config.LogLevel()); err != nil {
 		panic(err)

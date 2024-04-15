@@ -4,12 +4,12 @@ import "time"
 
 type Config struct {
 	serverAddr      string        // serverAddr store address and port to send requests to a server
-	storeInterval   time.Duration // Периодичность, с которой текущие показания сервера сохраняются на диск (в секундах)
 	fileStoragePath string        // Полное имя файла, куда сохраняются текущие значения
-	isReqRestore    bool          // Загружать ранее сохранённые значения из файла при старте сервера
 	databaseDSN     string        // Строка подключения к БД
 	secretKey       string        // Ключ для подписи данных
-	logLevel        string
+	logLevel        string        //
+	storeInterval   time.Duration // Периодичность, с которой текущие показания сервера сохраняются на диск (в секундах)
+	isReqRestore    bool          // Загружать ранее сохранённые значения из файла при старте сервера
 }
 
 func NewConfig() Config {

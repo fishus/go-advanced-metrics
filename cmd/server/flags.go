@@ -54,11 +54,11 @@ func parseFlags(config Config) Config {
 func parseEnvs(config Config) Config {
 	var cfg struct {
 		ServerAddr      string `env:"ADDRESS"`
-		StoreInterval   uint   `env:"STORE_INTERVAL"`
 		FileStoragePath string `env:"FILE_STORAGE_PATH"`
-		IsReqRestore    bool   `env:"RESTORE"`
 		DatabaseDSN     string `env:"DATABASE_DSN"`
 		SecretKey       string `env:"KEY"`
+		StoreInterval   uint   `env:"STORE_INTERVAL"`
+		IsReqRestore    bool   `env:"RESTORE"`
 	}
 	err := env.Parse(&cfg)
 	if err != nil {

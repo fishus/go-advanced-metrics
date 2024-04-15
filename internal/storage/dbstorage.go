@@ -142,15 +142,14 @@ func (ds *DBStorage) GaugesContext(ctx context.Context, filters ...StorageFilter
 			gValue float64
 		)
 
-		err = rows.Scan(&gName, &gValue)
-		if err != nil {
+		if err = rows.Scan(&gName, &gValue); err != nil {
 			logger.Log.Warn(err.Error())
 			return map[string]metrics.Gauge{}
 		}
 
-		gauge, err := metrics.NewGauge(gName, gValue)
-		if err != nil {
-			logger.Log.Warn(err.Error())
+		gauge, err2 := metrics.NewGauge(gName, gValue)
+		if err2 != nil {
+			logger.Log.Warn(err2.Error())
 			return map[string]metrics.Gauge{}
 		}
 
@@ -176,7 +175,7 @@ func (ds *DBStorage) SetGaugeContext(ctx context.Context, name string, value flo
 		return err
 	}
 
-	if _, err := metrics.NewGauge(name, value); err != nil {
+	if _, err = metrics.NewGauge(name, value); err != nil {
 		return err
 	}
 
@@ -305,9 +304,9 @@ func (ds *DBStorage) CountersContext(ctx context.Context, filters ...StorageFilt
 			return map[string]metrics.Counter{}
 		}
 
-		counter, err := metrics.NewCounter(cName, cValue)
-		if err != nil {
-			logger.Log.Warn(err.Error())
+		counter, err2 := metrics.NewCounter(cName, cValue)
+		if err2 != nil {
+			logger.Log.Warn(err2.Error())
 			return map[string]metrics.Counter{}
 		}
 
@@ -333,7 +332,7 @@ func (ds *DBStorage) AddCounterContext(ctx context.Context, name string, value i
 		return err
 	}
 
-	if _, err := metrics.NewCounter(name, value); err != nil {
+	if _, err = metrics.NewCounter(name, value); err != nil {
 		return err
 	}
 

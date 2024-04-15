@@ -104,8 +104,8 @@ func TestMemStorage_GaugeValue(t *testing.T) {
 
 	testCases := []struct {
 		name   string
-		gauges []gauge
 		key    string
+		gauges []gauge
 		want   want
 	}{
 		{
@@ -207,9 +207,9 @@ func TestMemStorage_SetGauge(t *testing.T) {
 	testCases := []struct {
 		name    string
 		key     string
-		value   float64
-		gauges  []gauge
 		want    map[string]metrics.Gauge
+		gauges  []gauge
+		value   float64
 		wantErr bool
 	}{
 		{
@@ -408,8 +408,8 @@ func TestMemStorage_CounterValue(t *testing.T) {
 
 	testCases := []struct {
 		name     string
-		counters []counter
 		key      string
+		counters []counter
 		want     want
 	}{
 		{
@@ -508,9 +508,9 @@ func TestMemStorage_AddCounter(t *testing.T) {
 	testCases := []struct {
 		name     string
 		key      string
-		value    int64
-		counters []counter
 		want     map[string]metrics.Counter
+		counters []counter
+		value    int64
 		wantErr  bool
 	}{
 		{
@@ -621,9 +621,9 @@ func TestMemStorage_InsertBatch(t *testing.T) {
 	testCases := []struct {
 		name     string
 		storage  *MemStorage
+		want     *MemStorage
 		counters []counter
 		gauges   []gauge
-		want     *MemStorage
 	}{
 		{
 			name: "Insert counters",

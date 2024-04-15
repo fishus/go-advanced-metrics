@@ -4,11 +4,11 @@ import "time"
 
 type config struct {
 	serverAddr     string        // serverAddr store address and port to send requests to a server
+	secretKey      string        // Ключ для подписи данных
+	logLevel       string        //
 	pollInterval   time.Duration // Обновлять метрики с заданной частотой (в секундах)
 	reportInterval time.Duration // Отправлять метрики на сервер с заданной частотой (в секундах)
-	secretKey      string        // Ключ для подписи данных
 	rateLimit      uint          // Количество одновременно исходящих запросов
-	logLevel       string
 }
 
 func newConfig() config {
