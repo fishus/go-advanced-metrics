@@ -40,6 +40,9 @@ func parseFlags(config Config) Config {
 	// Флаг -k=<КЛЮЧ> Ключ для подписи данных
 	secretKey := flag.String("k", "", "Secret key for signing data")
 
+	// Флаг -crypto-key путь до файла с приватным ключом
+	privateKeyPath := flag.String("crypto-key", "", "Path to the private key file")
+
 	flag.Parse()
 
 	return config.
@@ -48,7 +51,8 @@ func parseFlags(config Config) Config {
 		SetFileStoragePath(*fileStoragePath).
 		SetIsReqRestore(*isReqRestore).
 		SetDatabaseDSN(*databaseDSN).
-		SetSecretKey(*secretKey)
+		SetSecretKey(*secretKey).
+		SetPrivateKeyPath(*privateKeyPath)
 }
 
 func parseEnvs(config Config) Config {
@@ -57,6 +61,7 @@ func parseEnvs(config Config) Config {
 		FileStoragePath string `env:"FILE_STORAGE_PATH"`
 		DatabaseDSN     string `env:"DATABASE_DSN"`
 		SecretKey       string `env:"KEY"`
+		PrivateKeyPath  string `env:"CRYPTO_KEY"`
 		StoreInterval   uint   `env:"STORE_INTERVAL"`
 		IsReqRestore    bool   `env:"RESTORE"`
 	}
@@ -86,6 +91,9 @@ func parseEnvs(config Config) Config {
 	}
 	if _, exists := os.LookupEnv("KEY"); exists {
 		config = config.SetSecretKey(cfg.SecretKey)
+	}
+	if _, exists := os.LookupEnv("CRYPTO_KEY"); exists {
+		config = config.SetPrivateKeyPath(cfg.PrivateKeyPath)
 	}
 
 	return config

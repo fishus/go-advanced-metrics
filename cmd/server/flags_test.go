@@ -31,6 +31,7 @@ func (suite *FlagsTestSuite) SetupSuite() {
 		"RESTORE",
 		"DATABASE_DSN",
 		"KEY",
+		"CRYPTO_KEY",
 	} {
 		suite.osEnviron[e] = os.Getenv(e)
 	}
@@ -79,6 +80,7 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 				"isReqRestore":    true,
 				"databaseDSN":     "",
 				"secretKey":       "",
+				"privateKeyPath":  "",
 			},
 		},
 		{
@@ -116,6 +118,11 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 			args: []string{"-k=secret"},
 			want: map[string]interface{}{"secretKey": "secret"},
 		},
+		{
+			name: "Positive case: Set flag -crypto-key",
+			args: []string{"-crypto-key=/tmp/key"},
+			want: map[string]interface{}{"privateKeyPath": "/tmp/key"},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -152,6 +159,7 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 				"fileStoragePath": "",
 				"isReqRestore":    false,
 				"secretKey":       "",
+				"privateKeyPath":  "",
 			},
 		},
 		{
@@ -188,6 +196,11 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 			name: "Positive case: Set env KEY",
 			envs: []string{"KEY=secret"},
 			want: map[string]interface{}{"secretKey": "secret"},
+		},
+		{
+			name: "Positive case: Set env CRYPTO_KEY",
+			envs: []string{"CRYPTO_KEY=/tmp/key"},
+			want: map[string]interface{}{"privateKeyPath": "/tmp/key"},
 		},
 	}
 
@@ -239,6 +252,7 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 				"fileStoragePath": "/tmp/metrics-db.json",
 				"isReqRestore":    true,
 				"secretKey":       "",
+				"privateKeyPath":  "",
 			},
 		},
 		{
@@ -366,6 +380,24 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 			args: nil,
 			envs: []string{"KEY=secret"},
 			want: map[string]interface{}{"secretKey": "secret"},
+		},
+		{
+			name: "Positive case: Set flag -crypto-key and env CRYPTO_KEY",
+			args: []string{"-crypto-key=/tmp/key1"},
+			envs: []string{"CRYPTO_KEY=/tmp/key2"},
+			want: map[string]interface{}{"privateKeyPath": "/tmp/key2"},
+		},
+		{
+			name: "Positive case: Set flag -crypto-key only",
+			args: []string{"-crypto-key=/tmp/key"},
+			envs: nil,
+			want: map[string]interface{}{"privateKeyPath": "/tmp/key"},
+		},
+		{
+			name: "Positive case: Set env CRYPTO_KEY only",
+			args: nil,
+			envs: []string{"CRYPTO_KEY=/tmp/key"},
+			want: map[string]interface{}{"privateKeyPath": "/tmp/key"},
 		},
 	}
 

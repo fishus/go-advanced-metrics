@@ -35,6 +35,9 @@ func parseFlags(config config) config {
 	// Флаг -l=<ЗНАЧЕНИЕ> Количество одновременно исходящих запросов
 	rateLimit := flag.Uint("l", 3, "Количество одновременно исходящих запросов")
 
+	// Флаг -crypto-key путь до файла с публичным ключом
+	publicKeyPath := flag.String("crypto-key", "", "Path to the public key file")
+
 	flag.Parse()
 
 	return config.
@@ -42,6 +45,7 @@ func parseFlags(config config) config {
 		SetPollIntervalInSeconds(*pollInterval).
 		SetReportIntervalInSeconds(*reportInterval).
 		SetSecretKey(*secretKey).
+		SetPublicKeyPath(*publicKeyPath).
 		SetRateLimit(*rateLimit)
 }
 
@@ -49,6 +53,7 @@ func parseEnvs(config config) config {
 	var cfg struct {
 		ServerAddr     string `env:"ADDRESS"`
 		SecretKey      string `env:"KEY"`
+		PublicKeyPath  string `env:"CRYPTO_KEY"`
 		PollInterval   uint   `env:"POLL_INTERVAL"`
 		ReportInterval uint   `env:"REPORT_INTERVAL"`
 		RateLimit      uint   `env:"RATE_LIMIT"`
@@ -72,6 +77,9 @@ func parseEnvs(config config) config {
 	}
 	if _, exists := os.LookupEnv("RATE_LIMIT"); exists {
 		config = config.SetRateLimit(cfg.RateLimit)
+	}
+	if _, exists := os.LookupEnv("CRYPTO_KEY"); exists {
+		config = config.SetPublicKeyPath(cfg.PublicKeyPath)
 	}
 
 	return config

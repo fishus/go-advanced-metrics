@@ -5,6 +5,7 @@ import "time"
 type config struct {
 	serverAddr     string        // serverAddr store address and port to send requests to a server
 	secretKey      string        // Ключ для подписи данных
+	publicKeyPath  string        // Путь до файла с публичным ключом
 	logLevel       string        //
 	pollInterval   time.Duration // Обновлять метрики с заданной частотой (в секундах)
 	reportInterval time.Duration // Отправлять метрики на сервер с заданной частотой (в секундах)
@@ -58,6 +59,15 @@ func (c config) SecretKey() string {
 
 func (c config) SetSecretKey(key string) config {
 	c.secretKey = key
+	return c
+}
+
+func (c config) PublicKeyPath() string {
+	return c.publicKeyPath
+}
+
+func (c config) SetPublicKeyPath(path string) config {
+	c.publicKeyPath = path
 	return c
 }
 

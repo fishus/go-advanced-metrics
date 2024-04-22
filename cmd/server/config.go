@@ -7,6 +7,7 @@ type Config struct {
 	fileStoragePath string        // Полное имя файла, куда сохраняются текущие значения
 	databaseDSN     string        // Строка подключения к БД
 	secretKey       string        // Ключ для подписи данных
+	privateKeyPath  string        // Путь до файла с приватным ключом
 	logLevel        string        //
 	storeInterval   time.Duration // Периодичность, с которой текущие показания сервера сохраняются на диск (в секундах)
 	isReqRestore    bool          // Загружать ранее сохранённые значения из файла при старте сервера
@@ -72,5 +73,14 @@ func (c Config) SecretKey() string {
 
 func (c Config) SetSecretKey(key string) Config {
 	c.secretKey = key
+	return c
+}
+
+func (c Config) PrivateKeyPath() string {
+	return c.privateKeyPath
+}
+
+func (c Config) SetPrivateKeyPath(path string) Config {
+	c.privateKeyPath = path
 	return c
 }
