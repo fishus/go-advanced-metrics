@@ -15,6 +15,7 @@ import (
 	"github.com/go-resty/resty/v2"
 
 	"github.com/fishus/go-advanced-metrics/internal/collector"
+	"github.com/fishus/go-advanced-metrics/internal/cryptokey"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
 	"github.com/fishus/go-advanced-metrics/internal/secure"
@@ -201,6 +202,13 @@ func postMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, bat
 	if Config.SecretKey() != "" {
 		hash := secure.Hash(jsonBody, []byte(Config.SecretKey()))
 		hashString = hex.EncodeToString(hash[:])
+	}
+
+	if len(publicKey) > 0 {
+		jsonBody, err = cryptokey.Encrypt(jsonBody, publicKey)
+		if err != nil {
+			return err
+		}
 	}
 
 	buf := bytes.NewBuffer(nil)

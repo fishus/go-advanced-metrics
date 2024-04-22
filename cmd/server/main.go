@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/fishus/go-advanced-metrics/internal/app"
+	"github.com/fishus/go-advanced-metrics/internal/cryptokey"
 	db "github.com/fishus/go-advanced-metrics/internal/database"
 	"github.com/fishus/go-advanced-metrics/internal/handlers"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
@@ -45,6 +46,16 @@ func main() {
 	runServer(ctx)
 }
 
+func readPrivateKey() []byte {
+	if config.privateKeyPath != "" {
+		privateKey, err := cryptokey.ReadKeyFile(config.privateKeyPath)
+		if err == nil {
+			return privateKey
+		}
+	}
+	return nil
+}
+
 func setStorage(ctx context.Context) {
 	select {
 	case <-ctx.Done():
@@ -74,6 +85,7 @@ func setStorage(ctx context.Context) {
 
 func runServer(ctx context.Context) {
 	handlers.SetSecretKey(config.secretKey)
+	handlers.SetPrivateKey(readPrivateKey())
 	server := &http.Server{Addr: config.serverAddr, Handler: handlers.ServerRouter()}
 
 	saveMetricsOnExit(ctx, server)

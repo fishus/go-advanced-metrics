@@ -20,8 +20,10 @@ func main() {
 		panic(err)
 	}
 	defer logger.Log.Sync()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	app.Shutdown(cancel)
+
 	agent.CollectAndPostMetrics(ctx)
 }
