@@ -14,7 +14,13 @@ type Config struct {
 }
 
 func NewConfig() Config {
-	return Config{logLevel: "info"}
+	return Config{
+		serverAddr:      "localhost:8080",
+		fileStoragePath: "/tmp/metrics-db.json",
+		logLevel:        "info",
+		storeInterval:   300 * time.Second,
+		isReqRestore:    true,
+	}
 }
 
 func (c Config) ServerAddr() string {
