@@ -13,7 +13,13 @@ type config struct {
 }
 
 func newConfig() config {
-	return config{logLevel: "info"}
+	return config{
+		serverAddr:     "localhost:8080",
+		logLevel:       "info",
+		pollInterval:   2 * time.Second,
+		reportInterval: 10 * time.Second,
+		rateLimit:      3,
+	}
 }
 
 func (c config) ServerAddr() string {
