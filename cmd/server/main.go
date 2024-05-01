@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/fishus/go-advanced-metrics/internal/app"
@@ -19,6 +20,9 @@ var buildDate string
 var buildCommit string
 
 var config Config
+var wg sync.WaitGroup
+
+var server http.Server
 
 func main() {
 	app.PrintBuildInfo(buildVersion, buildDate, buildCommit)
@@ -29,9 +33,8 @@ func main() {
 	}
 	defer logger.Log.Sync()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := app.RegShutdown()
 	defer cancel()
-	app.Shutdown(cancel)
 
 	if config.databaseDSN != "" {
 		ctxDB, cancelDB := context.WithTimeout(ctx, (3 * time.Second))
@@ -43,7 +46,11 @@ func main() {
 	setStorage(ctx)
 	loadMetricsFromFile(ctx)
 	saveMetricsAtIntervals(ctx)
+	saveMetricsOnExit(ctx)
 	runServer(ctx)
+
+	<-ctx.Done()
+	Shutdown()
 }
 
 func readPrivateKey() []byte {
@@ -84,17 +91,17 @@ func setStorage(ctx context.Context) {
 }
 
 func runServer(ctx context.Context) {
-	handlers.SetSecretKey(config.secretKey)
-	handlers.SetPrivateKey(readPrivateKey())
-	server := &http.Server{Addr: config.serverAddr, Handler: handlers.ServerRouter()}
+	go func() {
+		handlers.SetSecretKey(config.secretKey)
+		handlers.SetPrivateKey(readPrivateKey())
+		server = http.Server{Addr: config.serverAddr, Handler: handlers.ServerRouter()}
 
-	saveMetricsOnExit(ctx, server)
-
-	logger.Log.Info("Running server", logger.String("address", config.serverAddr), logger.String("event", "start server"))
-	err := server.ListenAndServe()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		logger.Log.Error(err.Error(), logger.String("event", "start server"))
-	}
+		logger.Log.Info("Running server", logger.String("address", config.serverAddr), logger.String("event", "start server"))
+		err := server.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Log.Error(err.Error(), logger.String("event", "start server"))
+		}
+	}()
 }
 
 func loadMetricsFromFile(ctx context.Context) {
@@ -130,7 +137,10 @@ func saveMetricsAtIntervals(ctx context.Context) {
 		return
 	}
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+
 		ticker := time.NewTicker(config.storeInterval)
 		for {
 			select {
@@ -146,8 +156,10 @@ func saveMetricsAtIntervals(ctx context.Context) {
 	}()
 }
 
-func saveMetricsOnExit(ctx context.Context, server *http.Server) {
+func saveMetricsOnExit(ctx context.Context) {
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		<-ctx.Done()
 
 		if s, ok := handlers.Storage().(storage.Saver); ok {
@@ -156,10 +168,14 @@ func saveMetricsOnExit(ctx context.Context, server *http.Server) {
 				logger.Log.Error(err.Error(), logger.String("event", "save metrics into file"))
 			}
 		}
-
-		err := server.Shutdown(ctx)
-		if err != nil {
-			logger.Log.Error(err.Error(), logger.String("event", "stop server"))
-		}
 	}()
+}
+
+func Shutdown() {
+	wg.Wait()
+
+	err := server.Shutdown(context.Background())
+	if err != nil {
+		logger.Log.Error(err.Error(), logger.String("event", "stop server"))
+	}
 }

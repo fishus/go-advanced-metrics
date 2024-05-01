@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-
 	"github.com/fishus/go-advanced-metrics/internal/agent"
 	"github.com/fishus/go-advanced-metrics/internal/app"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
@@ -21,9 +19,11 @@ func main() {
 	}
 	defer logger.Log.Sync()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := app.RegShutdown()
 	defer cancel()
-	app.Shutdown(cancel)
 
 	agent.CollectAndPostMetrics(ctx)
+
+	<-ctx.Done()
+	agent.Shutdown()
 }

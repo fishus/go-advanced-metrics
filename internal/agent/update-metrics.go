@@ -31,8 +31,12 @@ func CollectAndPostMetrics(ctx context.Context) {
 func collectMetricsAtIntervals(ctx context.Context) chan *storage.MemStorage {
 	dataCh := make(chan *storage.MemStorage, 10)
 
+	wgAgent.Add(1)
+
 	go func() {
 		defer close(dataCh)
+		defer wgAgent.Done()
+
 		ticker := time.NewTicker(Config.PollInterval())
 		for {
 			select {
@@ -118,6 +122,8 @@ func postMetricsAtIntervals(ctx context.Context, dataCh <-chan *storage.MemStora
 	workerCh := make(chan *storage.MemStorage, Config.RateLimit())
 	defer close(workerCh)
 
+	wgAgent.Add(int(Config.RateLimit()))
+
 	for w := 1; w <= int(Config.RateLimit()); w++ {
 		go workerPostMetrics(ctx, workerCh)
 	}
@@ -142,6 +148,8 @@ func postMetricsAtIntervals(ctx context.Context, dataCh <-chan *storage.MemStora
 
 // workerPostMetrics posts collected metrics
 func workerPostMetrics(ctx context.Context, dataCh <-chan *storage.MemStorage) {
+	defer wgAgent.Done()
+
 	select {
 	case <-ctx.Done():
 		return
