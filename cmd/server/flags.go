@@ -12,35 +12,48 @@ import (
 
 func loadConfig() Config {
 	config := NewConfig()
-	config = parseConfigFile(config)
 	config = parseFlags(config)
 	config = parseEnvs(config)
+	config = parseConfigFile(config)
 
 	return config
 }
 
 func parseConfigFile(config Config) Config {
-	var configPath string
-
-	// Ищем флаг -c или -config
-	for i, v := range os.Args[1:] {
-		switch v {
-		case "-c", "-config":
-			if len(os.Args) < i+3 {
-				break
-			}
-			configPath = os.Args[i+2]
-		}
+	if config.configFile == "" {
+		return config
 	}
 
-	// Ищем env CONFIG
-	if v, exists := os.LookupEnv("CONFIG"); exists {
-		configPath = v
-	}
+	// Значения по-умолчанию
+	defaults := NewConfig()
 
 	// Загружаем переменные из конфига
-	if configPath != "" {
-		config = loadConfigFile(configPath, config)
+	cf := loadConfigFile(config.configFile, defaults)
+
+	// Устанавливаем значения из файла, если они не были установлены флагом или переменной окружения
+
+	if config.serverAddr == defaults.serverAddr && cf.serverAddr != defaults.serverAddr {
+		config.serverAddr = cf.serverAddr
+	}
+
+	if config.isReqRestore == defaults.isReqRestore && cf.isReqRestore != defaults.isReqRestore {
+		config.isReqRestore = cf.isReqRestore
+	}
+
+	if config.storeInterval == defaults.storeInterval && cf.storeInterval != defaults.storeInterval {
+		config.storeInterval = cf.storeInterval
+	}
+
+	if config.fileStoragePath == defaults.fileStoragePath && cf.fileStoragePath != defaults.fileStoragePath {
+		config.fileStoragePath = cf.fileStoragePath
+	}
+
+	if config.databaseDSN == defaults.databaseDSN && cf.databaseDSN != defaults.databaseDSN {
+		config.databaseDSN = cf.databaseDSN
+	}
+
+	if config.privateKeyPath == defaults.privateKeyPath && cf.privateKeyPath != defaults.privateKeyPath {
+		config.privateKeyPath = cf.privateKeyPath
 	}
 
 	return config
@@ -49,7 +62,7 @@ func parseConfigFile(config Config) Config {
 func loadConfigFile(path string, config Config) Config {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		log.Println(err)
+		log.Panicln(err)
 		return config
 	}
 
@@ -63,7 +76,7 @@ func loadConfigFile(path string, config Config) Config {
 	}
 	var conf Conf
 	if err = json.Unmarshal(data, &conf); err != nil {
-		log.Println(err)
+		log.Panicln(err)
 		return config
 	}
 
@@ -76,7 +89,7 @@ func loadConfigFile(path string, config Config) Config {
 	if conf.StoreInterval != "" {
 		p, err := time.ParseDuration(conf.StoreInterval)
 		if err != nil {
-			log.Println(err)
+			log.Panicln(err)
 		}
 		config = config.SetStoreInterval(p)
 	}
@@ -124,8 +137,8 @@ func parseFlags(config Config) Config {
 
 	// Флаг -config путь к файлу конфигурации
 	const configUsage = "Path to the config file"
-	_ = flag.String("config", "", configUsage)
-	_ = flag.String("c", "", configUsage+" (shorthand)")
+	flag.StringVar(&config.configFile, "config", "", configUsage)
+	flag.StringVar(&config.configFile, "c", "", configUsage+" (shorthand)")
 
 	flag.Parse()
 
@@ -146,6 +159,7 @@ func parseEnvs(config Config) Config {
 		DatabaseDSN     string `env:"DATABASE_DSN"`
 		SecretKey       string `env:"KEY"`
 		PrivateKeyPath  string `env:"CRYPTO_KEY"`
+		ConfigFile      string `env:"CONFIG"`
 		StoreInterval   uint   `env:"STORE_INTERVAL"`
 		IsReqRestore    bool   `env:"RESTORE"`
 	}
@@ -173,11 +187,17 @@ func parseEnvs(config Config) Config {
 	if _, exists := os.LookupEnv("DATABASE_DSN"); exists {
 		config = config.SetDatabaseDSN(cfg.DatabaseDSN)
 	}
+
 	if _, exists := os.LookupEnv("KEY"); exists {
 		config = config.SetSecretKey(cfg.SecretKey)
 	}
+
 	if _, exists := os.LookupEnv("CRYPTO_KEY"); exists {
 		config = config.SetPrivateKeyPath(cfg.PrivateKeyPath)
+	}
+
+	if _, exists := os.LookupEnv("CONFIG"); exists {
+		config.configFile = cfg.ConfigFile
 	}
 
 	return config

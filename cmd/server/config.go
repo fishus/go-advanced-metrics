@@ -9,6 +9,7 @@ type Config struct {
 	secretKey       string        // Ключ для подписи данных
 	privateKeyPath  string        // Путь до файла с приватным ключом
 	logLevel        string        //
+	configFile      string        // Путь к файлу конфигурации
 	storeInterval   time.Duration // Периодичность, с которой текущие показания сервера сохраняются на диск (в секундах)
 	isReqRestore    bool          // Загружать ранее сохранённые значения из файла при старте сервера
 }

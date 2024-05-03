@@ -12,35 +12,44 @@ import (
 
 func loadConfig() config {
 	conf := newConfig()
-	conf = parseConfigFile(conf)
 	conf = parseFlags(conf)
 	conf = parseEnvs(conf)
+	conf = parseConfigFile(conf)
 
 	return conf
 }
 
 func parseConfigFile(config config) config {
-	var configPath string
-
-	// Ищем флаг -c или -config
-	for i, v := range os.Args[1:] {
-		switch v {
-		case "-c", "-config":
-			if len(os.Args) < i+3 {
-				break
-			}
-			configPath = os.Args[i+2]
-		}
+	if config.configFile == "" {
+		return config
 	}
 
-	// Ищем env CONFIG
-	if v, exists := os.LookupEnv("CONFIG"); exists {
-		configPath = v
-	}
+	// Значения по-умолчанию
+	defaults := newConfig()
 
 	// Загружаем переменные из конфига
-	if configPath != "" {
-		config = loadConfigFile(configPath, config)
+	cf := loadConfigFile(config.configFile, defaults)
+
+	// Устанавливаем значения из файла, если они не были установлены флагом или переменной окружения
+
+	if config.serverAddr == defaults.serverAddr && cf.serverAddr != defaults.serverAddr {
+		config.serverAddr = cf.serverAddr
+	}
+
+	if config.publicKeyPath == defaults.publicKeyPath && cf.publicKeyPath != defaults.publicKeyPath {
+		config.publicKeyPath = cf.publicKeyPath
+	}
+
+	if config.pollInterval == defaults.pollInterval && cf.pollInterval != defaults.pollInterval {
+		config.pollInterval = cf.pollInterval
+	}
+
+	if config.reportInterval == defaults.reportInterval && cf.reportInterval != defaults.reportInterval {
+		config.reportInterval = cf.reportInterval
+	}
+
+	if config.rateLimit == defaults.rateLimit && cf.rateLimit != defaults.rateLimit {
+		config.rateLimit = cf.rateLimit
 	}
 
 	return config
@@ -49,7 +58,7 @@ func parseConfigFile(config config) config {
 func loadConfigFile(path string, config config) config {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		log.Println(err)
+		log.Panicln(err)
 		return config
 	}
 
@@ -62,7 +71,7 @@ func loadConfigFile(path string, config config) config {
 	}
 	var conf Conf
 	if err = json.Unmarshal(data, &conf); err != nil {
-		log.Println(err)
+		log.Panicln(err)
 		return config
 	}
 
@@ -73,7 +82,7 @@ func loadConfigFile(path string, config config) config {
 	if conf.PollInterval != "" {
 		p, err := time.ParseDuration(conf.PollInterval)
 		if err != nil {
-			log.Println(err)
+			log.Panicln(err)
 		}
 		config = config.SetPollInterval(p)
 	}
@@ -81,7 +90,7 @@ func loadConfigFile(path string, config config) config {
 	if conf.ReportInterval != "" {
 		p, err := time.ParseDuration(conf.ReportInterval)
 		if err != nil {
-			log.Println(err)
+			log.Panicln(err)
 		}
 		config = config.SetReportInterval(p)
 	}
@@ -120,8 +129,8 @@ func parseFlags(config config) config {
 
 	// Флаг -config путь к файлу конфигурации
 	const configUsage = "Path to the config file"
-	_ = flag.String("config", "", configUsage)
-	_ = flag.String("c", "", configUsage+" (shorthand)")
+	flag.StringVar(&config.configFile, "config", "", configUsage)
+	flag.StringVar(&config.configFile, "c", "", configUsage+" (shorthand)")
 
 	flag.Parse()
 
@@ -139,6 +148,7 @@ func parseEnvs(config config) config {
 		ServerAddr     string `env:"ADDRESS"`
 		SecretKey      string `env:"KEY"`
 		PublicKeyPath  string `env:"CRYPTO_KEY"`
+		ConfigFile     string `env:"CONFIG"`
 		PollInterval   uint   `env:"POLL_INTERVAL"`
 		ReportInterval uint   `env:"REPORT_INTERVAL"`
 		RateLimit      uint   `env:"RATE_LIMIT"`
@@ -151,20 +161,29 @@ func parseEnvs(config config) config {
 	if _, exists := os.LookupEnv("ADDRESS"); exists {
 		config = config.SetServerAddr(cfg.ServerAddr)
 	}
+
 	if _, exists := os.LookupEnv("POLL_INTERVAL"); exists {
 		config = config.SetPollIntervalInSeconds(cfg.PollInterval)
 	}
+
 	if _, exists := os.LookupEnv("REPORT_INTERVAL"); exists {
 		config = config.SetReportIntervalInSeconds(cfg.ReportInterval)
 	}
+
 	if _, exists := os.LookupEnv("KEY"); exists {
 		config = config.SetSecretKey(cfg.SecretKey)
 	}
+
 	if _, exists := os.LookupEnv("RATE_LIMIT"); exists {
 		config = config.SetRateLimit(cfg.RateLimit)
 	}
+
 	if _, exists := os.LookupEnv("CRYPTO_KEY"); exists {
 		config = config.SetPublicKeyPath(cfg.PublicKeyPath)
+	}
+
+	if _, exists := os.LookupEnv("CONFIG"); exists {
+		config.configFile = cfg.ConfigFile
 	}
 
 	return config
