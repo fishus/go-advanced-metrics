@@ -27,7 +27,12 @@ var server http.Server
 func main() {
 	app.PrintBuildInfo(buildVersion, buildDate, buildCommit)
 
-	config = loadConfig()
+	c, err := loadConfig()
+	if err != nil {
+		panic(err)
+	}
+	config = c
+
 	if err := logger.Initialize(config.logLevel); err != nil {
 		panic(err)
 	}

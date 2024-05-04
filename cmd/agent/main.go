@@ -13,7 +13,10 @@ var buildCommit string
 func main() {
 	app.PrintBuildInfo(buildVersion, buildDate, buildCommit)
 
-	_ = agent.Initialize()
+	if err := agent.Initialize(); err != nil {
+		panic(err)
+	}
+
 	if err := logger.Initialize(agent.Config.LogLevel()); err != nil {
 		panic(err)
 	}

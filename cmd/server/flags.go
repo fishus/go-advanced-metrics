@@ -3,32 +3,42 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"log"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/caarlos0/env/v10"
 )
 
-func loadConfig() Config {
-	config := NewConfig()
-	config = parseFlags(config)
-	config = parseEnvs(config)
-	config = parseConfigFile(config)
+func loadConfig() (conf Config, err error) {
+	conf = NewConfig()
+	conf = parseFlags(conf)
+	conf, err = parseEnvs(conf)
+	if err != nil {
+		return
+	}
 
-	return config
+	conf, err = parseConfigFile(conf)
+	if err != nil {
+		return
+	}
+
+	return
 }
 
-func parseConfigFile(config Config) Config {
+func parseConfigFile(config Config) (Config, error) {
 	if config.configFile == "" {
-		return config
+		return config, nil
 	}
 
 	// Значения по-умолчанию
 	defaults := NewConfig()
 
 	// Загружаем переменные из конфига
-	cf := loadConfigFile(config.configFile, defaults)
+	cf, err := loadConfigFile(config.configFile, defaults)
+	if err != nil {
+		return config, err
+	}
 
 	// Устанавливаем значения из файла, если они не были установлены флагом или переменной окружения
 
@@ -56,14 +66,13 @@ func parseConfigFile(config Config) Config {
 		config.privateKeyPath = cf.privateKeyPath
 	}
 
-	return config
+	return config, nil
 }
 
-func loadConfigFile(path string, config Config) Config {
+func loadConfigFile(path string, config Config) (Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		log.Panicln(err)
-		return config
+		return config, fmt.Errorf("can't read config file: %w", err)
 	}
 
 	type Conf struct {
@@ -76,8 +85,7 @@ func loadConfigFile(path string, config Config) Config {
 	}
 	var conf Conf
 	if err = json.Unmarshal(data, &conf); err != nil {
-		log.Panicln(err)
-		return config
+		return config, fmt.Errorf("failed to parse json data from config file: %w", err)
 	}
 
 	if conf.Address != "" {
@@ -89,7 +97,7 @@ func loadConfigFile(path string, config Config) Config {
 	if conf.StoreInterval != "" {
 		p, err := time.ParseDuration(conf.StoreInterval)
 		if err != nil {
-			log.Panicln(err)
+			return config, fmt.Errorf("failed to parse duration in store_interval when processing config file: %w", err)
 		}
 		config = config.SetStoreInterval(p)
 	}
@@ -106,7 +114,7 @@ func loadConfigFile(path string, config Config) Config {
 		config = config.SetPrivateKeyPath(conf.CryptoKey)
 	}
 
-	return config
+	return config, nil
 }
 
 func parseFlags(config Config) Config {
@@ -152,7 +160,7 @@ func parseFlags(config Config) Config {
 		SetPrivateKeyPath(*privateKeyPath)
 }
 
-func parseEnvs(config Config) Config {
+func parseEnvs(config Config) (Config, error) {
 	var cfg struct {
 		ServerAddr      string `env:"ADDRESS"`
 		FileStoragePath string `env:"FILE_STORAGE_PATH"`
@@ -165,7 +173,7 @@ func parseEnvs(config Config) Config {
 	}
 	err := env.Parse(&cfg)
 	if err != nil {
-		log.Panicln(err)
+		return config, fmt.Errorf("failed to parse environment variables: %w", err)
 	}
 
 	if _, exists := os.LookupEnv("ADDRESS"); exists {
@@ -200,5 +208,5 @@ func parseEnvs(config Config) Config {
 		config.configFile = cfg.ConfigFile
 	}
 
-	return config
+	return config, nil
 }

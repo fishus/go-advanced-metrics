@@ -3,32 +3,42 @@ package agent
 import (
 	"encoding/json"
 	"flag"
-	"log"
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/caarlos0/env/v10"
 )
 
-func loadConfig() config {
-	conf := newConfig()
+func loadConfig() (conf config, err error) {
+	conf = newConfig()
 	conf = parseFlags(conf)
-	conf = parseEnvs(conf)
-	conf = parseConfigFile(conf)
+	conf, err = parseEnvs(conf)
+	if err != nil {
+		return
+	}
 
-	return conf
+	conf, err = parseConfigFile(conf)
+	if err != nil {
+		return
+	}
+
+	return
 }
 
-func parseConfigFile(config config) config {
+func parseConfigFile(config config) (config, error) {
 	if config.configFile == "" {
-		return config
+		return config, nil
 	}
 
 	// Значения по-умолчанию
 	defaults := newConfig()
 
 	// Загружаем переменные из конфига
-	cf := loadConfigFile(config.configFile, defaults)
+	cf, err := loadConfigFile(config.configFile, defaults)
+	if err != nil {
+		return config, err
+	}
 
 	// Устанавливаем значения из файла, если они не были установлены флагом или переменной окружения
 
@@ -52,14 +62,13 @@ func parseConfigFile(config config) config {
 		config.rateLimit = cf.rateLimit
 	}
 
-	return config
+	return config, nil
 }
 
-func loadConfigFile(path string, config config) config {
+func loadConfigFile(path string, config config) (config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		log.Panicln(err)
-		return config
+		return config, fmt.Errorf("can't read config file: %w", err)
 	}
 
 	type Conf struct {
@@ -71,8 +80,7 @@ func loadConfigFile(path string, config config) config {
 	}
 	var conf Conf
 	if err = json.Unmarshal(data, &conf); err != nil {
-		log.Panicln(err)
-		return config
+		return config, fmt.Errorf("failed to parse json data from config file: %w", err)
 	}
 
 	if conf.Address != "" {
@@ -82,7 +90,7 @@ func loadConfigFile(path string, config config) config {
 	if conf.PollInterval != "" {
 		p, err := time.ParseDuration(conf.PollInterval)
 		if err != nil {
-			log.Panicln(err)
+			return config, fmt.Errorf("failed to parse duration in poll_interval when processing config file: %w", err)
 		}
 		config = config.SetPollInterval(p)
 	}
@@ -90,7 +98,7 @@ func loadConfigFile(path string, config config) config {
 	if conf.ReportInterval != "" {
 		p, err := time.ParseDuration(conf.ReportInterval)
 		if err != nil {
-			log.Panicln(err)
+			return config, fmt.Errorf("failed to parse duration in report_interval when processing config file: %w", err)
 		}
 		config = config.SetReportInterval(p)
 	}
@@ -103,7 +111,7 @@ func loadConfigFile(path string, config config) config {
 		config = config.SetPublicKeyPath(conf.CryptoKey)
 	}
 
-	return config
+	return config, nil
 }
 
 func parseFlags(config config) config {
@@ -143,7 +151,7 @@ func parseFlags(config config) config {
 		SetRateLimit(*rateLimit)
 }
 
-func parseEnvs(config config) config {
+func parseEnvs(config config) (config, error) {
 	var cfg struct {
 		ServerAddr     string `env:"ADDRESS"`
 		SecretKey      string `env:"KEY"`
@@ -155,7 +163,7 @@ func parseEnvs(config config) config {
 	}
 	err := env.Parse(&cfg)
 	if err != nil {
-		log.Panicln(err)
+		return config, fmt.Errorf("failed to parse environment variables: %w", err)
 	}
 
 	if _, exists := os.LookupEnv("ADDRESS"); exists {
@@ -186,5 +194,5 @@ func parseEnvs(config config) config {
 		config.configFile = cfg.ConfigFile
 	}
 
-	return config
+	return config, nil
 }

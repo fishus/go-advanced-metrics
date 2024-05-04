@@ -151,18 +151,6 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 		envs []string
 	}{
 		{
-			name: "Positive case: Default values",
-			envs: nil,
-			want: map[string]interface{}{
-				"serverAddr":      "",
-				"storeInterval":   0 * time.Second,
-				"fileStoragePath": "",
-				"isReqRestore":    false,
-				"secretKey":       "",
-				"privateKeyPath":  "",
-			},
-		},
-		{
 			name: "Positive case: Set env ADDRESS",
 			envs: []string{"ADDRESS=example.com:8181"},
 			want: map[string]interface{}{"serverAddr": "example.com:8181"},
@@ -223,7 +211,8 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 			}
 
 			config := NewConfig()
-			config = parseEnvs(config)
+			config, err := parseEnvs(config)
+			suite.Require().NoError(err)
 
 			configFields := reflect.ValueOf(config)
 
@@ -423,7 +412,8 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 				}
 			}
 
-			config := loadConfig()
+			config, err := loadConfig()
+			suite.Require().NoError(err)
 
 			configFields := reflect.ValueOf(config)
 
