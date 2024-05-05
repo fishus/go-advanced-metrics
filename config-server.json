@@ -1,0 +1,8 @@
+{
+    "address": "localhost:8080",
+    "restore": true,
+    "store_interval": "5s",
+    "store_file": "d:\\Projects\\go-yandex-advanced\\metrics-db.json",
+    "database_dsn": "",
+    "crypto_key": "d:\\Projects\\go-yandex-advanced\\keys\\test-private.pem"
+}

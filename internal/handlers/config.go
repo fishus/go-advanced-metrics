@@ -23,3 +23,13 @@ func SecretKey() string {
 func SetSecretKey(key string) {
 	secretKey = key
 }
+
+var privateKey []byte
+
+func PrivateKey() []byte {
+	return privateKey
+}
+
+func SetPrivateKey(key []byte) {
+	privateKey = key
+}

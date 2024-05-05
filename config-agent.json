@@ -1,0 +1,7 @@
+{
+    "address": "localhost:8080",
+    "poll_interval": "2s",
+    "report_interval": "10s",
+    "rate_limit": 2,
+    "crypto_key": "d:\\Projects\\go-yandex-advanced\\keys\\test-public.pem"
+}

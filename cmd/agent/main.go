@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-
 	"github.com/fishus/go-advanced-metrics/internal/agent"
 	"github.com/fishus/go-advanced-metrics/internal/app"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
@@ -15,13 +13,20 @@ var buildCommit string
 func main() {
 	app.PrintBuildInfo(buildVersion, buildDate, buildCommit)
 
-	_ = agent.Initialize()
+	if err := agent.Initialize(); err != nil {
+		panic(err)
+	}
+
 	if err := logger.Initialize(agent.Config.LogLevel()); err != nil {
 		panic(err)
 	}
 	defer logger.Log.Sync()
-	ctx, cancel := context.WithCancel(context.Background())
+
+	ctx, cancel := app.RegShutdown()
 	defer cancel()
-	app.Shutdown(cancel)
+
 	agent.CollectAndPostMetrics(ctx)
+
+	<-ctx.Done()
+	agent.Shutdown()
 }

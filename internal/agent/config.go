@@ -5,6 +5,8 @@ import "time"
 type config struct {
 	serverAddr     string        // serverAddr store address and port to send requests to a server
 	secretKey      string        // Ключ для подписи данных
+	publicKeyPath  string        // Путь до файла с публичным ключом
+	configFile     string        // Путь к файлу конфигурации
 	logLevel       string        //
 	pollInterval   time.Duration // Обновлять метрики с заданной частотой (в секундах)
 	reportInterval time.Duration // Отправлять метрики на сервер с заданной частотой (в секундах)
@@ -12,7 +14,13 @@ type config struct {
 }
 
 func newConfig() config {
-	return config{logLevel: "info"}
+	return config{
+		serverAddr:     "localhost:8080",
+		logLevel:       "info",
+		pollInterval:   2 * time.Second,
+		reportInterval: 10 * time.Second,
+		rateLimit:      3,
+	}
 }
 
 func (c config) ServerAddr() string {
@@ -58,6 +66,15 @@ func (c config) SecretKey() string {
 
 func (c config) SetSecretKey(key string) config {
 	c.secretKey = key
+	return c
+}
+
+func (c config) PublicKeyPath() string {
+	return c.publicKeyPath
+}
+
+func (c config) SetPublicKeyPath(path string) config {
+	c.publicKeyPath = path
 	return c
 }
 

@@ -29,6 +29,7 @@ func (suite *FlagsTestSuite) SetupSuite() {
 		"POLL_INTERVAL",
 		"REPORT_INTERVAL",
 		"KEY",
+		"CRYPTO_KEY",
 		"RATE_LIMIT",
 	} {
 		suite.osEnviron[e] = os.Getenv(e)
@@ -76,6 +77,7 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 				"pollInterval":   2 * time.Second,
 				"reportInterval": 10 * time.Second,
 				"secretKey":      "",
+				"publicKeyPath":  "",
 				"rateLimit":      uint(3),
 			},
 		},
@@ -103,6 +105,11 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 			name: "Positive case: Set flag -l",
 			args: []string{"-l=15"},
 			want: map[string]interface{}{"rateLimit": uint(15)},
+		},
+		{
+			name: "Positive case: Set flag -crypto-key",
+			args: []string{"-crypto-key=/tmp/key.pub"},
+			want: map[string]interface{}{"publicKeyPath": "/tmp/key.pub"},
 		},
 	}
 
@@ -132,17 +139,6 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 		envs []string
 	}{
 		{
-			name: "Positive case: Default values",
-			envs: nil,
-			want: map[string]interface{}{
-				"serverAddr":     "",
-				"pollInterval":   0 * time.Second,
-				"reportInterval": 0 * time.Second,
-				"secretKey":      "",
-				"rateLimit":      uint(0),
-			},
-		},
-		{
 			name: "Positive case: Set env ADDRESS",
 			envs: []string{"ADDRESS=example.com:8181"},
 			want: map[string]interface{}{"serverAddr": "example.com:8181"},
@@ -167,6 +163,11 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 			envs: []string{"RATE_LIMIT=15"},
 			want: map[string]interface{}{"rateLimit": uint(15)},
 		},
+		{
+			name: "Positive case: Set env CRYPTO_KEY",
+			envs: []string{"CRYPTO_KEY=/tmp/key.pub"},
+			want: map[string]interface{}{"publicKeyPath": "/tmp/key.pub"},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -188,7 +189,8 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 			}
 
 			config := newConfig()
-			config = parseEnvs(config)
+			config, err := parseEnvs(config)
+			suite.Require().NoError(err)
 
 			configFields := reflect.ValueOf(config)
 
@@ -216,6 +218,7 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 				"pollInterval":   2 * time.Second,
 				"reportInterval": 10 * time.Second,
 				"secretKey":      "",
+				"publicKeyPath":  "",
 				"rateLimit":      uint(3),
 			},
 		},
@@ -291,7 +294,6 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 			envs: []string{"KEY=secret"},
 			want: map[string]interface{}{"secretKey": "secret"},
 		},
-		////////
 		{
 			name: "Positive case: Set flag -l and env RATE_LIMIT",
 			args: []string{"-l=15"},
@@ -309,6 +311,24 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 			args: nil,
 			envs: []string{"RATE_LIMIT=15"},
 			want: map[string]interface{}{"rateLimit": uint(15)},
+		},
+		{
+			name: "Positive case: Set flag -crypto-key and env CRYPTO_KEY",
+			args: []string{"-crypto-key=/tmp/key1.pub"},
+			envs: []string{"CRYPTO_KEY=/tmp/key2.pub"},
+			want: map[string]interface{}{"publicKeyPath": "/tmp/key2.pub"},
+		},
+		{
+			name: "Positive case: Set flag -crypto-key only",
+			args: []string{"-crypto-key=/tmp/key.pub"},
+			envs: nil,
+			want: map[string]interface{}{"publicKeyPath": "/tmp/key.pub"},
+		},
+		{
+			name: "Positive case: Set env CRYPTO_KEY only",
+			args: nil,
+			envs: []string{"CRYPTO_KEY=/tmp/key.pub"},
+			want: map[string]interface{}{"publicKeyPath": "/tmp/key.pub"},
 		},
 	}
 
@@ -334,7 +354,8 @@ func (suite *FlagsTestSuite) TestLoadConfig() {
 				}
 			}
 
-			config := loadConfig()
+			config, err := loadConfig()
+			suite.Require().NoError(err)
 
 			configFields := reflect.ValueOf(config)
 
