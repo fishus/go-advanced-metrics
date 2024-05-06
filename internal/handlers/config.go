@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"net"
+	
 	store "github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
@@ -32,4 +34,14 @@ func PrivateKey() []byte {
 
 func SetPrivateKey(key []byte) {
 	privateKey = key
+}
+
+var trustedSubnet *net.IPNet
+
+func TrustedSubnet() *net.IPNet {
+	return trustedSubnet
+}
+
+func SetTrustedSubnet(subnet *net.IPNet) {
+	trustedSubnet = subnet
 }

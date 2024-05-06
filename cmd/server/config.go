@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"net"
+	"time"
+)
 
 type Config struct {
 	serverAddr      string        // serverAddr store address and port to send requests to a server
@@ -10,6 +13,7 @@ type Config struct {
 	privateKeyPath  string        // Путь до файла с приватным ключом
 	logLevel        string        //
 	configFile      string        // Путь к файлу конфигурации
+	trustedSubnet   *net.IPNet    // Доверенная подсеть
 	storeInterval   time.Duration // Периодичность, с которой текущие показания сервера сохраняются на диск (в секундах)
 	isReqRestore    bool          // Загружать ранее сохранённые значения из файла при старте сервера
 }
@@ -90,4 +94,27 @@ func (c Config) PrivateKeyPath() string {
 func (c Config) SetPrivateKeyPath(path string) Config {
 	c.privateKeyPath = path
 	return c
+}
+
+func (c Config) TrustedSubnet() *net.IPNet {
+	return c.trustedSubnet
+}
+
+func (c Config) SetTrustedSubnet(subnet *net.IPNet) Config {
+	c.trustedSubnet = subnet
+	return c
+}
+
+func (c Config) SetTrustedSubnetFromString(subnet string) (Config, error) {
+	if subnet == "" {
+		return c, nil
+	}
+
+	_, s, err := net.ParseCIDR(subnet)
+	if err != nil {
+		return c, err
+	}
+
+	c.trustedSubnet = s
+	return c, nil
 }

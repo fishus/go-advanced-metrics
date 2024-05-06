@@ -32,6 +32,7 @@ func (suite *FlagsTestSuite) SetupSuite() {
 		"DATABASE_DSN",
 		"KEY",
 		"CRYPTO_KEY",
+		"TRUSTED_SUBNET",
 	} {
 		suite.osEnviron[e] = os.Getenv(e)
 	}
@@ -132,7 +133,8 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 			}
 
 			config := NewConfig()
-			config = parseFlags(config)
+			config, err := parseFlags(config)
+			suite.Require().NoError(err)
 
 			configFields := reflect.ValueOf(config)
 

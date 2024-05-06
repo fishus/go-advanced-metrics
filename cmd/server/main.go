@@ -99,6 +99,7 @@ func runServer(ctx context.Context) {
 	go func() {
 		handlers.SetSecretKey(config.secretKey)
 		handlers.SetPrivateKey(readPrivateKey())
+		handlers.SetTrustedSubnet(config.trustedSubnet)
 		server = http.Server{Addr: config.serverAddr, Handler: handlers.ServerRouter()}
 
 		logger.Log.Info("Running server", logger.String("address", config.serverAddr), logger.String("event", "start server"))

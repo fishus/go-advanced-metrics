@@ -12,17 +12,17 @@ import (
 
 func loadConfig() (conf Config, err error) {
 	conf = NewConfig()
-	conf = parseFlags(conf)
+	conf, err = parseFlags(conf)
+	if err != nil {
+		return
+	}
+
 	conf, err = parseEnvs(conf)
 	if err != nil {
 		return
 	}
 
 	conf, err = parseConfigFile(conf)
-	if err != nil {
-		return
-	}
-
 	return
 }
 
@@ -66,6 +66,10 @@ func parseConfigFile(config Config) (Config, error) {
 		config.privateKeyPath = cf.privateKeyPath
 	}
 
+	if config.trustedSubnet.String() == defaults.trustedSubnet.String() && cf.trustedSubnet.String() != defaults.trustedSubnet.String() {
+		config.trustedSubnet = cf.trustedSubnet
+	}
+
 	return config, nil
 }
 
@@ -82,6 +86,7 @@ func loadConfigFile(path string, config Config) (Config, error) {
 		StoreFile     string `json:"store_file,omitempty"`
 		DatabaseDSN   string `json:"database_dsn,omitempty"`
 		CryptoKey     string `json:"crypto_key,omitempty"`
+		TrustedSubnet string `json:"trusted_subnet,omitempty"`
 	}
 	var conf Conf
 	if err = json.Unmarshal(data, &conf); err != nil {
@@ -114,10 +119,17 @@ func loadConfigFile(path string, config Config) (Config, error) {
 		config = config.SetPrivateKeyPath(conf.CryptoKey)
 	}
 
+	if conf.TrustedSubnet != "" {
+		config, err = config.SetTrustedSubnetFromString(conf.TrustedSubnet)
+		if err != nil {
+			return config, fmt.Errorf("failed to parse subnet in trusted_subnet when processing config file: %w", err)
+		}
+	}
+
 	return config, nil
 }
 
-func parseFlags(config Config) Config {
+func parseFlags(config Config) (Config, error) {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
 	// Флаг -a=<ЗНАЧЕНИЕ> отвечает за адрес эндпоинта HTTP-сервера (по умолчанию localhost:8080).
@@ -143,12 +155,27 @@ func parseFlags(config Config) Config {
 	// Флаг -crypto-key путь до файла с приватным ключом
 	privateKeyPath := flag.String("crypto-key", config.privateKeyPath, "Path to the private key file")
 
+	// Строковое представление бесклассовой адресации (CIDR).
+	var t string
+	if config.trustedSubnet != nil {
+		t = config.trustedSubnet.String()
+	}
+	trustedSubnet := flag.String("t", t, "Trusted subnet (CIDR)")
+
 	// Флаг -config путь к файлу конфигурации
 	const configUsage = "Path to the config file"
 	flag.StringVar(&config.configFile, "config", "", configUsage)
 	flag.StringVar(&config.configFile, "c", "", configUsage+" (shorthand)")
 
 	flag.Parse()
+
+	if *trustedSubnet != "" {
+		c, err := config.SetTrustedSubnetFromString(*trustedSubnet)
+		if err != nil {
+			return config, fmt.Errorf("failed to parse trusted subnet: %w", err)
+		}
+		config = c
+	}
 
 	return config.
 		SetServerAddr(*serverAddr).
@@ -157,7 +184,7 @@ func parseFlags(config Config) Config {
 		SetIsReqRestore(*isReqRestore).
 		SetDatabaseDSN(*databaseDSN).
 		SetSecretKey(*secretKey).
-		SetPrivateKeyPath(*privateKeyPath)
+		SetPrivateKeyPath(*privateKeyPath), nil
 }
 
 func parseEnvs(config Config) (Config, error) {
@@ -167,6 +194,7 @@ func parseEnvs(config Config) (Config, error) {
 		DatabaseDSN     string `env:"DATABASE_DSN"`
 		SecretKey       string `env:"KEY"`
 		PrivateKeyPath  string `env:"CRYPTO_KEY"`
+		TrustedSubnet   string `env:"TRUSTED_SUBNET"`
 		ConfigFile      string `env:"CONFIG"`
 		StoreInterval   uint   `env:"STORE_INTERVAL"`
 		IsReqRestore    bool   `env:"RESTORE"`
@@ -202,6 +230,14 @@ func parseEnvs(config Config) (Config, error) {
 
 	if _, exists := os.LookupEnv("CRYPTO_KEY"); exists {
 		config = config.SetPrivateKeyPath(cfg.PrivateKeyPath)
+	}
+
+	if _, exists := os.LookupEnv("TRUSTED_SUBNET"); exists {
+		c, err := config.SetTrustedSubnetFromString(cfg.TrustedSubnet)
+		if err != nil {
+			return config, fmt.Errorf("failed to parse trusted subnet: %w", err)
+		}
+		config = c
 	}
 
 	if _, exists := os.LookupEnv("CONFIG"); exists {

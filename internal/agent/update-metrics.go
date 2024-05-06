@@ -159,6 +159,13 @@ func workerPostMetrics(ctx context.Context, dataCh <-chan *storage.MemStorage) {
 	client := resty.New().SetBaseURL("http://" + Config.ServerAddr())
 	logger.Log.Info("Running agent worker", logger.String("address", Config.ServerAddr()), logger.String("event", "start agent worker"))
 
+	ip, err := GetIP()
+	if err != nil {
+		logger.Log.Warn(err.Error())
+	} else if ip != nil {
+		client.SetHeader("X-Real-IP", ip.String())
+	}
+
 	gz, err := gzip.NewWriterLevel(nil, gzip.BestCompression)
 	if err != nil {
 		logger.Log.Panic(err.Error())

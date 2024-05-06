@@ -15,11 +15,8 @@ func ServerRouter() chi.Router {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestID)
 	r.Use(mw.Decompress)
-
-	if len(privateKey) > 0 {
-		r.Use(mw.Decrypt(privateKey))
-	}
-
+	r.Use(mw.TrustedSubnet(trustedSubnet))
+	r.Use(mw.Decrypt(privateKey))
 	r.Use(mw.ValidateSign([]byte(secretKey)))
 	r.Use(mw.Sign([]byte(secretKey)))
 	r.Use(middleware.Compress(9, "application/json", "text/html"))
