@@ -13,7 +13,9 @@ import (
 
 func ExampleUpdateMetricsHandler_gauge() {
 	storage := store.NewMemStorage()
-	handlers.SetStorage(storage)
+	_ = handlers.NewServer(handlers.Config{
+		Storage: storage,
+	})
 
 	_ = storage.SetGauge("a", 1.23)
 
@@ -42,7 +44,9 @@ func ExampleUpdateMetricsHandler_gauge() {
 
 func ExampleUpdateMetricsHandler_counter() {
 	storage := store.NewMemStorage()
-	handlers.SetStorage(storage)
+	_ = handlers.NewServer(handlers.Config{
+		Storage: storage,
+	})
 
 	_ = storage.AddCounter("a", 1)
 

@@ -15,7 +15,9 @@ import (
 
 func ExampleUpdatesMetricsHandler() {
 	storage := store.NewMemStorage()
-	handlers.SetStorage(storage)
+	_ = handlers.NewServer(handlers.Config{
+		Storage: storage,
+	})
 
 	_ = storage.SetGauge("a", 1.23)
 	_ = storage.AddCounter("a", 1)

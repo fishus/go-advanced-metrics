@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"flag"
@@ -132,7 +132,7 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 				os.Args = append(os.Args, tc.args...)
 			}
 
-			config := NewConfig()
+			config := newConfig()
 			config, err := parseFlags(config)
 			suite.Require().NoError(err)
 
@@ -212,7 +212,7 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 				}
 			}
 
-			config := NewConfig()
+			config := newConfig()
 			config, err := parseEnvs(config)
 			suite.Require().NoError(err)
 

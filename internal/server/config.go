@@ -1,11 +1,11 @@
-package main
+package server
 
 import (
 	"net"
 	"time"
 )
 
-type Config struct {
+type config struct {
 	serverAddr      string        // serverAddr store address and port to send requests to a server
 	fileStoragePath string        // Полное имя файла, куда сохраняются текущие значения
 	databaseDSN     string        // Строка подключения к БД
@@ -18,8 +18,8 @@ type Config struct {
 	isReqRestore    bool          // Загружать ранее сохранённые значения из файла при старте сервера
 }
 
-func NewConfig() Config {
-	return Config{
+func newConfig() config {
+	return config{
 		serverAddr:      "localhost:8080",
 		fileStoragePath: "/tmp/metrics-db.json",
 		logLevel:        "info",
@@ -28,84 +28,84 @@ func NewConfig() Config {
 	}
 }
 
-func (c Config) ServerAddr() string {
+func (c config) ServerAddr() string {
 	return c.serverAddr
 }
 
-func (c Config) SetServerAddr(addr string) Config {
+func (c config) SetServerAddr(addr string) config {
 	c.serverAddr = addr
 	return c
 }
 
-func (c Config) StoreInterval() time.Duration {
+func (c config) StoreInterval() time.Duration {
 	return c.storeInterval
 }
 
-func (c Config) SetStoreInterval(t time.Duration) Config {
+func (c config) SetStoreInterval(t time.Duration) config {
 	c.storeInterval = t
 	return c
 }
 
-func (c Config) SetStoreIntervalInSeconds(s uint) Config {
+func (c config) SetStoreIntervalInSeconds(s uint) config {
 	c.storeInterval = time.Duration(s) * time.Second
 	return c
 }
 
-func (c Config) FileStoragePath() string {
+func (c config) FileStoragePath() string {
 	return c.fileStoragePath
 }
 
-func (c Config) SetFileStoragePath(path string) Config {
+func (c config) SetFileStoragePath(path string) config {
 	c.fileStoragePath = path
 	return c
 }
 
-func (c Config) IsReqRestore() bool {
+func (c config) IsReqRestore() bool {
 	return c.isReqRestore
 }
 
-func (c Config) SetIsReqRestore(restore bool) Config {
+func (c config) SetIsReqRestore(restore bool) config {
 	c.isReqRestore = restore
 	return c
 }
 
-func (c Config) DatabaseDSN() string {
+func (c config) DatabaseDSN() string {
 	return c.databaseDSN
 }
 
-func (c Config) SetDatabaseDSN(dsn string) Config {
+func (c config) SetDatabaseDSN(dsn string) config {
 	c.databaseDSN = dsn
 	return c
 }
 
-func (c Config) SecretKey() string {
+func (c config) SecretKey() string {
 	return c.secretKey
 }
 
-func (c Config) SetSecretKey(key string) Config {
+func (c config) SetSecretKey(key string) config {
 	c.secretKey = key
 	return c
 }
 
-func (c Config) PrivateKeyPath() string {
+func (c config) PrivateKeyPath() string {
 	return c.privateKeyPath
 }
 
-func (c Config) SetPrivateKeyPath(path string) Config {
+func (c config) SetPrivateKeyPath(path string) config {
 	c.privateKeyPath = path
 	return c
 }
 
-func (c Config) TrustedSubnet() *net.IPNet {
+func (c config) TrustedSubnet() *net.IPNet {
 	return c.trustedSubnet
 }
 
-func (c Config) SetTrustedSubnet(subnet *net.IPNet) Config {
+func (c config) SetTrustedSubnet(subnet *net.IPNet) config {
 	c.trustedSubnet = subnet
 	return c
 }
 
-func (c Config) SetTrustedSubnetFromString(subnet string) (Config, error) {
+func (c config) SetTrustedSubnetFromString(subnet string) (config, error) {
 	if subnet == "" {
 		return c, nil
 	}
@@ -117,4 +117,8 @@ func (c Config) SetTrustedSubnetFromString(subnet string) (Config, error) {
 
 	c.trustedSubnet = s
 	return c, nil
+}
+
+func (c config) LogLevel() string {
+	return c.logLevel
 }

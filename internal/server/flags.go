@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"encoding/json"
@@ -10,8 +10,8 @@ import (
 	"github.com/caarlos0/env/v10"
 )
 
-func loadConfig() (conf Config, err error) {
-	conf = NewConfig()
+func loadConfig() (conf config, err error) {
+	conf = newConfig()
 	conf, err = parseFlags(conf)
 	if err != nil {
 		return
@@ -26,13 +26,13 @@ func loadConfig() (conf Config, err error) {
 	return
 }
 
-func parseConfigFile(config Config) (Config, error) {
+func parseConfigFile(config config) (config, error) {
 	if config.configFile == "" {
 		return config, nil
 	}
 
 	// Значения по-умолчанию
-	defaults := NewConfig()
+	defaults := newConfig()
 
 	// Загружаем переменные из конфига
 	cf, err := loadConfigFile(config.configFile, defaults)
@@ -73,7 +73,7 @@ func parseConfigFile(config Config) (Config, error) {
 	return config, nil
 }
 
-func loadConfigFile(path string, config Config) (Config, error) {
+func loadConfigFile(path string, config config) (config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return config, fmt.Errorf("can't read config file: %w", err)
@@ -129,7 +129,7 @@ func loadConfigFile(path string, config Config) (Config, error) {
 	return config, nil
 }
 
-func parseFlags(config Config) (Config, error) {
+func parseFlags(config config) (config, error) {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
 	// Флаг -a=<ЗНАЧЕНИЕ> отвечает за адрес эндпоинта HTTP-сервера (по умолчанию localhost:8080).
@@ -187,7 +187,7 @@ func parseFlags(config Config) (Config, error) {
 		SetPrivateKeyPath(*privateKeyPath), nil
 }
 
-func parseEnvs(config Config) (Config, error) {
+func parseEnvs(config config) (config, error) {
 	var cfg struct {
 		ServerAddr      string `env:"ADDRESS"`
 		FileStoragePath string `env:"FILE_STORAGE_PATH"`

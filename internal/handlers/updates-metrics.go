@@ -58,7 +58,7 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err := storage.InsertBatchContext(r.Context(), store.WithCounters(countersBatch), store.WithGauges(gaugesBatch))
+	err := config.Storage.InsertBatchContext(r.Context(), store.WithCounters(countersBatch), store.WithGauges(gaugesBatch))
 	if err != nil {
 		JSONError(w, err.Error(), http.StatusInternalServerError)
 		logger.Log.Debug(err.Error(),
@@ -70,7 +70,7 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	metricsBatch = metricsBatch[:0]
 
 	if names := getBatchCounterNames(countersBatch); len(names) > 0 {
-		counters := storage.CountersContext(r.Context(), store.FilterNames(names))
+		counters := config.Storage.CountersContext(r.Context(), store.FilterNames(names))
 		for _, cn := range names {
 			if c, ok := counters[cn]; ok {
 				metricsBatch = append(metricsBatch, metrics.NewCounterMetric(c.Name()).SetDelta(c.Value()))
@@ -79,7 +79,7 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if names := getBatchGaugeNames(gaugesBatch); len(names) > 0 {
-		gauges := storage.GaugesContext(r.Context(), store.FilterNames(names))
+		gauges := config.Storage.GaugesContext(r.Context(), store.FilterNames(names))
 		for _, cn := range names {
 			if g, ok := gauges[cn]; ok {
 				metricsBatch = append(metricsBatch, metrics.NewGaugeMetric(g.Name()).SetValue(g.Value()))
@@ -88,7 +88,7 @@ func UpdatesMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Synchronously save metrics values into a file
-	if s, ok := storage.(store.SyncSaver); ok {
+	if s, ok := config.Storage.(store.SyncSaver); ok {
 		err := s.SyncSave()
 		if err != nil {
 			logger.Log.Error(err.Error(), logger.String("event", "synchronously save metrics into file"))

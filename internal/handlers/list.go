@@ -14,8 +14,8 @@ func ListHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 
-	counters := storage.CountersContext(r.Context())
-	gauges := storage.GaugesContext(r.Context())
+	counters := config.Storage.CountersContext(r.Context())
+	gauges := config.Storage.GaugesContext(r.Context())
 
 	data := struct {
 		Counters map[string]metrics.Counter

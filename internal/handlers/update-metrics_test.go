@@ -27,9 +27,9 @@ func (s *UpdateMetricsHandlerSuite) TearDownSuite() {
 }
 
 func (s *UpdateMetricsHandlerSuite) SetupSubTest() {
-	storage = store.NewMemStorage()
-	_ = storage.AddCounter("a", 7)
-	_ = storage.SetGauge("a", 11.15)
+	config.Storage = store.NewMemStorage()
+	_ = config.Storage.AddCounter("a", 7)
+	_ = config.Storage.SetGauge("a", 11.15)
 }
 
 func (s *UpdateMetricsHandlerSuite) requestUpdate(data []byte) *resty.Response {

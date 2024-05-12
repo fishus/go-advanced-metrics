@@ -34,27 +34,27 @@ func UpdateMetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch metric.MType {
 	case metrics.TypeCounter:
-		err := storage.AddCounterContext(r.Context(), metric.ID, *metric.Delta)
+		err := config.Storage.AddCounterContext(r.Context(), metric.ID, *metric.Delta)
 		if err != nil {
 			JSONError(w, err.Error(), http.StatusBadRequest)
 			logger.Log.Debug(err.Error(), logger.Any("metric", metric))
 			return
 		}
-		counterValue, _ := storage.CounterValueContext(r.Context(), metric.ID)
+		counterValue, _ := config.Storage.CounterValueContext(r.Context(), metric.ID)
 		metric = metric.SetDelta(counterValue)
 	case metrics.TypeGauge:
-		err := storage.SetGaugeContext(r.Context(), metric.ID, *metric.Value)
+		err := config.Storage.SetGaugeContext(r.Context(), metric.ID, *metric.Value)
 		if err != nil {
 			JSONError(w, err.Error(), http.StatusBadRequest)
 			logger.Log.Debug(err.Error(), logger.Any("metric", metric))
 			return
 		}
-		gaugeValue, _ := storage.GaugeValueContext(r.Context(), metric.ID)
+		gaugeValue, _ := config.Storage.GaugeValueContext(r.Context(), metric.ID)
 		metric = metric.SetValue(gaugeValue)
 	}
 
 	// Synchronously save metrics values into a file
-	if s, ok := storage.(store.SyncSaver); ok {
+	if s, ok := config.Storage.(store.SyncSaver); ok {
 		err := s.SyncSave()
 		if err != nil {
 			logger.Log.Error(err.Error(), logger.String("event", "synchronously save metrics into file"))
