@@ -16,7 +16,15 @@ type config struct {
 	trustedSubnet   *net.IPNet    // Доверенная подсеть
 	storeInterval   time.Duration // Периодичность, с которой текущие показания сервера сохраняются на диск (в секундах)
 	isReqRestore    bool          // Загружать ранее сохранённые значения из файла при старте сервера
+	serverType      ServerType
 }
+
+type ServerType string
+
+const (
+	ServerTypeHTTP ServerType = "http"
+	ServerTypeGRPC ServerType = "grpc"
+)
 
 func newConfig() config {
 	return config{
@@ -25,6 +33,7 @@ func newConfig() config {
 		logLevel:        "info",
 		storeInterval:   300 * time.Second,
 		isReqRestore:    true,
+		serverType:      ServerTypeHTTP,
 	}
 }
 
@@ -117,6 +126,15 @@ func (c config) SetTrustedSubnetFromString(subnet string) (config, error) {
 
 	c.trustedSubnet = s
 	return c, nil
+}
+
+func (c config) ServerType() ServerType {
+	return c.serverType
+}
+
+func (c config) SetServerType(t ServerType) config {
+	c.serverType = t
+	return c
 }
 
 func (c config) LogLevel() string {

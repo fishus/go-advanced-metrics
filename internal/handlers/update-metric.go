@@ -34,7 +34,7 @@ func UpdateMetricHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := validateInputMetric(metric); err != nil {
+	if err := ValidateInputMetric(metric); err != nil {
 		var ve *ValidMetricError
 		if errors.As(err, &ve) {
 			JSONError(w, ve.Error(), ve.HTTPCode)

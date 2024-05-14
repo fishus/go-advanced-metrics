@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/fishus/go-advanced-metrics/internal/controller"
 	"github.com/fishus/go-advanced-metrics/internal/handlers"
 	store "github.com/fishus/go-advanced-metrics/internal/storage"
 )
@@ -21,6 +22,7 @@ func ExampleUpdatesMetricsHandler() {
 
 	_ = storage.SetGauge("a", 1.23)
 	_ = storage.AddCounter("a", 1)
+	controller.Storage = storage
 
 	data := `
 	[

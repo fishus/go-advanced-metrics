@@ -5,7 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fishus/go-advanced-metrics/internal/controller"
 	db "github.com/fishus/go-advanced-metrics/internal/database"
+	grpc "github.com/fishus/go-advanced-metrics/internal/grpc/server"
 	"github.com/fishus/go-advanced-metrics/internal/handlers"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	store "github.com/fishus/go-advanced-metrics/internal/storage"
@@ -105,13 +107,28 @@ func SaveMetricsOnExit(ctx context.Context) {
 }
 
 func RunServer(ctx context.Context) {
-	Server = handlers.NewServer(handlers.Config{
-		ServerAddr:    Config.ServerAddr(),
-		Storage:       Storage,
-		SecretKey:     Config.SecretKey(),
-		PrivateKey:    PrivateKey,
-		TrustedSubnet: Config.TrustedSubnet(),
-	})
+	controller.Storage = Storage
+
+	switch Config.ServerType() {
+	case ServerTypeHTTP:
+		Server = handlers.NewServer(handlers.Config{
+			ServerAddr:    Config.ServerAddr(),
+			Storage:       Storage, // TODO remove
+			SecretKey:     Config.SecretKey(),
+			PrivateKey:    PrivateKey,
+			TrustedSubnet: Config.TrustedSubnet(),
+		})
+	case ServerTypeGRPC:
+		Server = grpc.NewServer(grpc.Config{
+			ServerAddr:    Config.ServerAddr(),
+			Storage:       Storage, // TODO remove
+			SecretKey:     Config.SecretKey(),
+			PrivateKey:    PrivateKey,
+			TrustedSubnet: Config.TrustedSubnet(),
+		})
+	default:
+		logger.Log.Panic("unspecified server type")
+	}
 
 	go func() {
 		Server.Run(ctx)
