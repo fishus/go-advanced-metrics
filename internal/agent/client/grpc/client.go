@@ -3,14 +3,17 @@ package grpc
 import (
 	"context"
 	"fmt"
-	"google.golang.org/grpc/encoding/gzip"
 	"time"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/realip"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/encoding/gzip"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	ac "github.com/fishus/go-advanced-metrics/internal/agent/client"
 	sg "github.com/fishus/go-advanced-metrics/internal/grpc"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
@@ -45,6 +48,13 @@ func (c *Client) Init() error {
 	c.conn = conn
 	c.client = pb.NewMetricsClient(conn)
 	logger.Log.Info("Running gRPC worker", logger.String("address", c.config.ServerAddr), logger.String("event", "start agent worker"))
+
+	ip, err := ac.GetIP()
+	if err != nil {
+		logger.Log.Warn(err.Error())
+	} else if ip != nil {
+		c.ip = ip.String()
+	}
 
 	return nil
 }
@@ -119,6 +129,9 @@ func (c *Client) UpdateBatch(ctx context.Context, batch []metrics.Metrics) error
 		logger.String("data", req.String()))
 
 	gz := grpc.UseCompressor(gzip.Name)
+
+	md := metadata.New(map[string]string{realip.XRealIp: c.ip})
+	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	resp, err := c.client.Updates(ctx, req, gz)
 	if err != nil {

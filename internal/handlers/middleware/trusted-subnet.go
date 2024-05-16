@@ -27,7 +27,7 @@ func TrustedSubnet(subnet *net.IPNet) func(next http.Handler) http.Handler {
 
 			ip := net.ParseIP(remoteAddr)
 
-			if !subnet.Contains(ip) {
+			if ip == nil || !subnet.Contains(ip) {
 				if strings.Contains(contentType, "application/json") {
 					JSONError(w, "The request from this ip-address was rejected.", http.StatusForbidden)
 				} else {

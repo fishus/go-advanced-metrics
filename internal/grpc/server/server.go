@@ -31,6 +31,11 @@ func NewServer(cfg Config) *server {
 	}
 	interceptors = append(interceptors, grpc.ChainUnaryInterceptor(
 		logging.UnaryServerInterceptor(ic.InterceptorLogger(logger.Log), loggerOpts...),
+		ic.TrustedSubnetInterceptor(cfg.TrustedSubnet),
+	))
+
+	interceptors = append(interceptors, grpc.ChainUnaryInterceptor(
+		logging.UnaryServerInterceptor(ic.InterceptorLogger(logger.Log), loggerOpts...),
 	))
 
 	srv := &server{}
