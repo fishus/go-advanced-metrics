@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
-	"google.golang.org/grpc"
 	"net"
+
+	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/encoding/gzip"
 
 	ic "github.com/fishus/go-advanced-metrics/internal/grpc/interceptors"
 	"github.com/fishus/go-advanced-metrics/internal/logger"

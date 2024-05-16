@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/encoding/gzip"
 	"time"
 
 	"google.golang.org/grpc"
@@ -117,8 +118,9 @@ func (c *Client) UpdateBatch(ctx context.Context, batch []metrics.Metrics) error
 		logger.String("addr", c.config.ServerAddr),
 		logger.String("data", req.String()))
 
-	resp, err := c.client.Updates(ctx, req)
+	gz := grpc.UseCompressor(gzip.Name)
 
+	resp, err := c.client.Updates(ctx, req, gz)
 	if err != nil {
 		logger.Log.Error(err.Error())
 		return err
