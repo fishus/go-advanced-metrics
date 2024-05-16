@@ -11,7 +11,15 @@ type config struct {
 	pollInterval   time.Duration // Обновлять метрики с заданной частотой (в секундах)
 	reportInterval time.Duration // Отправлять метрики на сервер с заданной частотой (в секундах)
 	rateLimit      uint          // Количество одновременно исходящих запросов
+	clientType     ClientType
 }
+
+type ClientType string
+
+const (
+	ClientTypeREST ClientType = "rest"
+	ClientTypeGRPC ClientType = "grpc"
+)
 
 func newConfig() config {
 	return config{
@@ -20,6 +28,7 @@ func newConfig() config {
 		pollInterval:   2 * time.Second,
 		reportInterval: 10 * time.Second,
 		rateLimit:      3,
+		clientType:     ClientTypeREST,
 	}
 }
 
@@ -87,6 +96,15 @@ func (c config) RateLimit() uint {
 
 func (c config) SetRateLimit(limit uint) config {
 	c.rateLimit = limit
+	return c
+}
+
+func (c config) ClientType() ClientType {
+	return c.clientType
+}
+
+func (c config) SetClientType(t ClientType) config {
+	c.clientType = t
 	return c
 }
 

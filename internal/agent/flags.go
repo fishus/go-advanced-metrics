@@ -135,12 +135,19 @@ func parseFlags(config config) config {
 	// Флаг -crypto-key путь до файла с публичным ключом
 	publicKeyPath := flag.String("crypto-key", config.publicKeyPath, "Path to the public key file")
 
+	// Флаг -g запускать gRPC сервер
+	useGRPC := flag.Bool("g", false, "run gRPC server instead of REST")
+
 	// Флаг -config путь к файлу конфигурации
 	const configUsage = "Path to the config file"
 	flag.StringVar(&config.configFile, "config", "", configUsage)
 	flag.StringVar(&config.configFile, "c", "", configUsage+" (shorthand)")
 
 	flag.Parse()
+
+	if *useGRPC {
+		config = config.SetClientType(ClientTypeGRPC)
+	}
 
 	return config.
 		SetServerAddr(*serverAddr).

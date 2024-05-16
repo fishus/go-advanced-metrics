@@ -22,7 +22,7 @@ type config struct {
 type ServerType string
 
 const (
-	ServerTypeHTTP ServerType = "http"
+	ServerTypeREST ServerType = "rest"
 	ServerTypeGRPC ServerType = "grpc"
 )
 
@@ -33,7 +33,7 @@ func newConfig() config {
 		logLevel:        "info",
 		storeInterval:   300 * time.Second,
 		isReqRestore:    true,
-		serverType:      ServerTypeHTTP,
+		serverType:      ServerTypeREST,
 	}
 }
 

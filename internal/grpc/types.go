@@ -1,4 +1,4 @@
-package server
+package grpc
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	pb "github.com/fishus/go-advanced-metrics/proto"
 )
 
-func protoToMetric(m *pb.Metric) (metrics.Metrics, error) {
+func ProtoToMetric(m *pb.Metric) (metrics.Metrics, error) {
 	var mtype string
 	switch m.Mtype {
 	case pb.Mtype_TYPE_GAUGE:
@@ -29,7 +29,7 @@ func protoToMetric(m *pb.Metric) (metrics.Metrics, error) {
 	}, nil
 }
 
-func metricToProto(metric metrics.Metrics) (pb.Metric, error) {
+func MetricToProto(metric metrics.Metrics) (pb.Metric, error) {
 	var mtype pb.Mtype
 	switch metric.MType {
 	case metrics.TypeGauge:
@@ -48,7 +48,7 @@ func metricToProto(metric metrics.Metrics) (pb.Metric, error) {
 	}, nil
 }
 
-func httpCodeToGRPC(code int) codes.Code {
+func HTTPCodeToGRPC(code int) codes.Code {
 	switch code {
 	case http.StatusOK:
 		return codes.OK

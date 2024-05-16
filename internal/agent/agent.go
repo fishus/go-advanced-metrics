@@ -4,9 +4,10 @@ import (
 	"github.com/fishus/go-advanced-metrics/internal/cryptokey"
 )
 
-var Config config
-
-var publicKey []byte
+var (
+	Config    config
+	PublicKey []byte
+)
 
 func Initialize() error {
 	c, err := loadConfig()
@@ -21,7 +22,7 @@ func Initialize() error {
 		if err != nil {
 			return err
 		}
-		publicKey = pubKey
+		PublicKey = pubKey
 	}
 
 	return nil

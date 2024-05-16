@@ -110,7 +110,7 @@ func RunServer(ctx context.Context) {
 	controller.Storage = Storage
 
 	switch Config.ServerType() {
-	case ServerTypeHTTP:
+	case ServerTypeREST:
 		Server = handlers.NewServer(handlers.Config{
 			ServerAddr:    Config.ServerAddr(),
 			Storage:       Storage, // TODO remove

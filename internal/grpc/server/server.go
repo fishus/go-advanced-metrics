@@ -2,12 +2,13 @@ package server
 
 import (
 	"context"
+	"google.golang.org/grpc"
 	"net"
 
-	"google.golang.org/grpc"
-
+	ic "github.com/fishus/go-advanced-metrics/internal/grpc/interceptors"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	pb "github.com/fishus/go-advanced-metrics/proto"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 )
 
 type server struct {
@@ -21,8 +22,17 @@ type MetricsServer struct {
 func NewServer(cfg Config) *server {
 	config = cfg
 
+	interceptors := make([]grpc.ServerOption, 0)
+
+	loggerOpts := []logging.Option{
+		logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
+	}
+	interceptors = append(interceptors, grpc.ChainUnaryInterceptor(
+		logging.UnaryServerInterceptor(ic.InterceptorLogger(logger.Log), loggerOpts...),
+	))
+
 	srv := &server{}
-	srv.server = grpc.NewServer()
+	srv.server = grpc.NewServer(interceptors...)
 	pb.RegisterMetricsServer(srv.server, &MetricsServer{})
 	return srv
 }

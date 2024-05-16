@@ -19,7 +19,7 @@ func NewServer(cfg Config) *server {
 
 func (s *server) Run(ctx context.Context) {
 	s.server = &http.Server{Addr: config.ServerAddr, Handler: ServerRouter()}
-	logger.Log.Info("Running http server", logger.String("address", config.ServerAddr), logger.String("event", "start server"))
+	logger.Log.Info("Running rest server", logger.String("address", config.ServerAddr), logger.String("event", "start server"))
 	err := s.server.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		logger.Log.Error(err.Error(), logger.String("event", "start server"))
