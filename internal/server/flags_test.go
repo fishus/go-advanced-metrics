@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"flag"
@@ -32,6 +32,7 @@ func (suite *FlagsTestSuite) SetupSuite() {
 		"DATABASE_DSN",
 		"KEY",
 		"CRYPTO_KEY",
+		"TRUSTED_SUBNET",
 	} {
 		suite.osEnviron[e] = os.Getenv(e)
 	}
@@ -131,8 +132,9 @@ func (suite *FlagsTestSuite) TestParseFlags() {
 				os.Args = append(os.Args, tc.args...)
 			}
 
-			config := NewConfig()
-			config = parseFlags(config)
+			config := newConfig()
+			config, err := parseFlags(config)
+			suite.Require().NoError(err)
 
 			configFields := reflect.ValueOf(config)
 
@@ -210,7 +212,7 @@ func (suite *FlagsTestSuite) TestParseEnvs() {
 				}
 			}
 
-			config := NewConfig()
+			config := newConfig()
 			config, err := parseEnvs(config)
 			suite.Require().NoError(err)
 

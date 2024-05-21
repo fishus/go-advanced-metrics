@@ -8,6 +8,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/fishus/go-advanced-metrics/internal/controller"
 	store "github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
@@ -27,9 +28,10 @@ func (s *UpdatesMetricsHandlerSuite) TearDownSuite() {
 }
 
 func (s *UpdatesMetricsHandlerSuite) SetupSubTest() {
-	storage = store.NewMemStorage()
-	_ = storage.AddCounter("a", 7)
-	_ = storage.SetGauge("a", 11.15)
+	config.Storage = store.NewMemStorage()
+	_ = config.Storage.AddCounter("a", 7)
+	_ = config.Storage.SetGauge("a", 11.15)
+	controller.Storage = config.Storage
 }
 
 func (s *UpdatesMetricsHandlerSuite) requestUpdate(data []byte) *resty.Response {

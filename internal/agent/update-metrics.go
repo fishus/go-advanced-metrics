@@ -1,24 +1,15 @@
 package agent
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
-	"encoding/hex"
-	"encoding/json"
-	"errors"
-	"io"
-	"net"
 	"sync"
 	"time"
 
-	"github.com/go-resty/resty/v2"
-
+	cg "github.com/fishus/go-advanced-metrics/internal/agent/client/grpc"
+	"github.com/fishus/go-advanced-metrics/internal/agent/client/rest"
 	"github.com/fishus/go-advanced-metrics/internal/collector"
-	"github.com/fishus/go-advanced-metrics/internal/cryptokey"
 	"github.com/fishus/go-advanced-metrics/internal/logger"
 	"github.com/fishus/go-advanced-metrics/internal/metrics"
-	"github.com/fishus/go-advanced-metrics/internal/secure"
 	"github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
@@ -150,23 +141,40 @@ func postMetricsAtIntervals(ctx context.Context, dataCh <-chan *storage.MemStora
 func workerPostMetrics(ctx context.Context, dataCh <-chan *storage.MemStorage) {
 	defer wgAgent.Done()
 
-	select {
-	case <-ctx.Done():
-		return
+	var client IAgentClient
+
+	switch Config.ClientType() {
+	case ClientTypeREST:
+		client = rest.NewClient(rest.Config{
+			ServerAddr: Config.ServerAddr(),
+			SecretKey:  Config.SecretKey(),
+			PublicKey:  PublicKey,
+		})
+		err := client.Init()
+		if err != nil {
+			logger.Log.Panic(err.Error())
+		}
+	case ClientTypeGRPC:
+		client = cg.NewClient(cg.Config{
+			ServerAddr: Config.ServerAddr(),
+			SecretKey:  Config.SecretKey(),
+			PublicKey:  PublicKey,
+		})
+		err := client.Init()
+		if err != nil {
+			logger.Log.Panic(err.Error())
+		}
+		conn := client.(*cg.Client).Conn()
+		if conn != nil {
+			defer conn.Close()
+		}
 	default:
-	}
-
-	client := resty.New().SetBaseURL("http://" + Config.ServerAddr())
-	logger.Log.Info("Running agent worker", logger.String("address", Config.ServerAddr()), logger.String("event", "start agent worker"))
-
-	gz, err := gzip.NewWriterLevel(nil, gzip.BestCompression)
-	if err != nil {
-		logger.Log.Panic(err.Error())
-		return
+		logger.Log.Panic("unspecified client type")
 	}
 
 	for data := range dataCh {
-		err := retryPostMetrics(ctx, client, gz, data)
+		batch := packMetricsIntoBatch(data)
+		err := client.RetryUpdateBatch(ctx, batch)
 		if err != nil {
 			logger.Log.Error(err.Error())
 		}
@@ -185,131 +193,4 @@ func packMetricsIntoBatch(data *storage.MemStorage) []metrics.Metrics {
 	}
 
 	return batch
-}
-
-func postMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, batch []metrics.Metrics) error {
-	if len(batch) == 0 {
-		return nil
-	}
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-
-	jsonBody, err := json.Marshal(batch)
-	if err != nil {
-		logger.Log.Error(err.Error(),
-			logger.String("event", "encode json"),
-			logger.Any("data", batch))
-		return err
-	}
-
-	var hashString string
-	if Config.SecretKey() != "" {
-		hash := secure.Hash(jsonBody, []byte(Config.SecretKey()))
-		hashString = hex.EncodeToString(hash[:])
-	}
-
-	if len(publicKey) > 0 {
-		jsonBody, err = cryptokey.Encrypt(jsonBody, publicKey)
-		if err != nil {
-			return err
-		}
-	}
-
-	buf := bytes.NewBuffer(nil)
-	gz.Reset(buf)
-	_, err = gz.Write(jsonBody)
-	if err != nil {
-		logger.Log.Error(err.Error(),
-			logger.String("event", "compress request"),
-			logger.Any("body", json.RawMessage(jsonBody)))
-		return err
-	}
-	err = gz.Close()
-	if err != nil {
-		logger.Log.Error(err.Error(),
-			logger.String("event", "compress request"),
-			logger.Any("body", json.RawMessage(jsonBody)))
-		return err
-	}
-
-	logger.Log.Debug(`Send POST /updates/ request`,
-		logger.String("event", "send request"),
-		logger.String("addr", Config.ServerAddr()),
-		logger.Any("body", json.RawMessage(jsonBody)))
-
-	req := client.R().
-		SetContext(ctx).
-		SetDoNotParseResponse(true).
-		SetHeader("Content-Type", "application/json; charset=utf-8").
-		SetHeader("Content-Encoding", "gzip").
-		SetHeader("Accept-Encoding", "gzip").
-		SetBody(buf)
-
-	if hashString != "" {
-		req.SetHeader("HashSHA256", hashString)
-	}
-
-	resp, err := req.Post("updates/")
-
-	if err != nil {
-		logger.Log.Error(err.Error(),
-			logger.String("event", "send request"),
-			logger.String("url", "http://"+Config.ServerAddr()+"/updates/"),
-			logger.Any("body", json.RawMessage(jsonBody)))
-		return err
-	}
-
-	rawBody := resp.RawBody()
-	defer rawBody.Close()
-
-	gzBody, err := gzip.NewReader(rawBody)
-	if err != nil {
-		return nil
-	}
-	defer gzBody.Close()
-
-	body, err := io.ReadAll(gzBody)
-	if err != nil {
-		return nil
-	}
-
-	logger.Log.Debug(`Received response from the server`, logger.String("event", "response received"), logger.Any("headers", resp.Header()), logger.Any("body", json.RawMessage(body)))
-
-	return nil
-}
-
-func retryPostMetrics(ctx context.Context, client *resty.Client, gz *gzip.Writer, data *storage.MemStorage) error {
-	var err error
-	var neterr *net.OpError
-
-	// Delay after unsuccessful request
-	retryDelay := []time.Duration{
-		1 * time.Second,
-		3 * time.Second,
-		5 * time.Second,
-		0,
-	}
-
-	for _, delay := range retryDelay {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
-		batch := packMetricsIntoBatch(data)
-		err = postMetrics(ctx, client, gz, batch)
-
-		errors.As(err, &neterr)
-		if err == nil || !errors.Is(err, neterr) {
-			return nil
-		}
-		time.Sleep(delay)
-	}
-
-	return err
 }

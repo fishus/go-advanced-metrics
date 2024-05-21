@@ -35,7 +35,7 @@ func (s *ListHandlerSuite) TearDownSuite() {
 }
 
 func (s *ListHandlerSuite) SetupTest() {
-	storage = store.NewMemStorage()
+	config.Storage = store.NewMemStorage()
 }
 
 func (s *ListHandlerSuite) requestValue() *resty.Response {
@@ -71,7 +71,7 @@ func (s *ListHandlerSuite) TestNoMetrics() {
 }
 
 func (s *ListHandlerSuite) TestCounterOnly() {
-	_ = storage.AddCounter("a", 5)
+	_ = config.Storage.AddCounter("a", 5)
 
 	resp := s.requestValue()
 	body := resp.RawBody()
@@ -102,7 +102,7 @@ func (s *ListHandlerSuite) TestCounterOnly() {
 }
 
 func (s *ListHandlerSuite) TestGaugeOnly() {
-	_ = storage.SetGauge("a", 12.57)
+	_ = config.Storage.SetGauge("a", 12.57)
 
 	resp := s.requestValue()
 	body := resp.RawBody()
@@ -133,8 +133,8 @@ func (s *ListHandlerSuite) TestGaugeOnly() {
 }
 
 func (s *ListHandlerSuite) TestCounterAndGauge() {
-	_ = storage.AddCounter("a", 5)
-	_ = storage.SetGauge("b", 12.57)
+	_ = config.Storage.AddCounter("a", 5)
+	_ = config.Storage.SetGauge("b", 12.57)
 
 	resp := s.requestValue()
 	body := resp.RawBody()

@@ -97,7 +97,7 @@ func TestValidateInputMetric(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := validateInputMetric(tc.metric)
+			err := ValidateInputMetric(tc.metric)
 			if tc.want.wantErr {
 				assert.Error(t, err)
 				var ve *ValidMetricError

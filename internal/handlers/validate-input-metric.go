@@ -28,7 +28,7 @@ func NewValidMetricError(httpCode int, err error) *ValidMetricError {
 }
 
 // Функции проверки входящих данных метрики
-func validateInputMetric(metric metrics.Metrics) error {
+func ValidateInputMetric(metric metrics.Metrics) error {
 	// При попытке передать запрос без имени метрики возвращать http.StatusNotFound.
 	if metric.ID == "" {
 		return NewValidMetricError(http.StatusNotFound, errors.New(`ID not specified`))

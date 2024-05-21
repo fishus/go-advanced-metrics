@@ -1,35 +1,20 @@
 package handlers
 
 import (
+	"net"
+
+	"github.com/fishus/go-advanced-metrics/internal/controller"
 	store "github.com/fishus/go-advanced-metrics/internal/storage"
 )
 
-var storage store.MetricsStorager
+var Controller controller.Controller
 
-func Storage() store.MetricsStorager {
-	return storage
-}
+var config Config
 
-func SetStorage(s store.MetricsStorager) {
-	storage = s
-}
-
-var secretKey string
-
-func SecretKey() string {
-	return secretKey
-}
-
-func SetSecretKey(key string) {
-	secretKey = key
-}
-
-var privateKey []byte
-
-func PrivateKey() []byte {
-	return privateKey
-}
-
-func SetPrivateKey(key []byte) {
-	privateKey = key
+type Config struct {
+	ServerAddr    string
+	Storage       store.MetricsStorager // TODO remove
+	SecretKey     string
+	PrivateKey    []byte
+	TrustedSubnet *net.IPNet
 }
